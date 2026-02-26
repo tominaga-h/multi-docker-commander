@@ -15,6 +15,7 @@ Thumbs.db
 *.out
 cover.html
 coverage.txt
+coverage.out
 
 # Go vendor (uncomment if not vendoring)
 # vendor/

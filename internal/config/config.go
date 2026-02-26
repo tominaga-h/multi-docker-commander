@@ -49,7 +49,10 @@ func Load(name string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	return LoadFromDir(configDir, name)
+}
 
+func LoadFromDir(configDir, name string) (*Config, error) {
 	path := filepath.Join(configDir, name)
 	if filepath.Ext(path) == "" {
 		path += ".yml"
