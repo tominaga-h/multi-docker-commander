@@ -131,6 +131,25 @@ func execCommand(p config.Project, item config.CommandItem, configName string, b
 		return nil
 	}
 
+	if hasPTYSupport() && isTerminal(os.Stdout) {
+		if !buffered {
+			logger.Border()
+		}
+		output, err := execWithPTY(cmd, buffered)
+		if !buffered {
+			logger.Border()
+		}
+		if err != nil {
+			logger.Error(p.Name, item.Command, err)
+			if buffered && output != "" {
+				logger.Output(p.Name, output)
+			}
+			return fmt.Errorf("project %q: command %q failed: %w", p.Name, item.Command, err)
+		}
+		logger.Success(p.Name, item.Command)
+		return nil
+	}
+
 	if buffered {
 		var stdoutBuf, stderrBuf bytes.Buffer
 		cmd.Stdout = &stdoutBuf
@@ -143,10 +162,13 @@ func execCommand(p config.Project, item config.CommandItem, configName string, b
 			return fmt.Errorf("project %q: command %q failed: %w", p.Name, item.Command, err)
 		}
 	} else {
+		logger.Border()
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
+		err := cmd.Run()
+		logger.Border()
 
-		if err := cmd.Run(); err != nil {
+		if err != nil {
 			logger.Error(p.Name, item.Command, err)
 			return fmt.Errorf("project %q: command %q failed: %w", p.Name, item.Command, err)
 		}

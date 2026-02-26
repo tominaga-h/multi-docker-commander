@@ -8,6 +8,7 @@ import (
 	"mdc/internal/pidfile"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 )
 
@@ -50,11 +51,12 @@ var procsCmd = &cobra.Command{
 		for configName, projects := range allData {
 			for projectName, entries := range projects {
 				for _, e := range entries {
-					status := "Dead"
-					if pidfile.IsRunning(e.PID) {
-						status = "Running"
-					}
-					t.AppendRow(table.Row{configName, projectName, e.Command, shortenHome(e.Dir), e.PID, status})
+				status := text.Colors{text.FgRed}.Sprint("Dead")
+				if pidfile.IsRunning(e.PID) {
+					status = text.Colors{text.FgGreen}.Sprint("Running")
+				}
+				command := text.Colors{text.FgCyan}.Sprint(e.Command)
+				t.AppendRow(table.Row{configName, projectName, command, shortenHome(e.Dir), e.PID, status})
 				}
 			}
 		}
