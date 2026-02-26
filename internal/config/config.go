@@ -67,6 +67,28 @@ func DefaultConfigDir() (string, error) {
 	return BaseMDCDir()
 }
 
+func ListConfigs() ([]string, error) {
+	configDir, err := DefaultConfigDir()
+	if err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(configDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config directory %s: %w", configDir, err)
+	}
+	var files []string
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		ext := filepath.Ext(e.Name())
+		if ext == ".yml" || ext == ".yaml" {
+			files = append(files, e.Name())
+		}
+	}
+	return files, nil
+}
+
 func Load(name string) (*Config, error) {
 	configDir, err := DefaultConfigDir()
 	if err != nil {
