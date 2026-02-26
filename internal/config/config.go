@@ -55,12 +55,16 @@ func ExpandHome(path string) (string, error) {
 	return filepath.Join(home, path[1:]), nil
 }
 
-func DefaultConfigDir() (string, error) {
+func BaseMDCDir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get home directory: %w", err)
 	}
 	return filepath.Join(home, ".config", "mdc"), nil
+}
+
+func DefaultConfigDir() (string, error) {
+	return BaseMDCDir()
 }
 
 func Load(name string) (*Config, error) {

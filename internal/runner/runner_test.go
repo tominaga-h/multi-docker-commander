@@ -39,28 +39,31 @@ func TestCommandsForAction(t *testing.T) {
 	}
 
 	t.Run("action up", func(t *testing.T) {
-		cmds, err := commandsForAction(cfg, "up")
+		pcs, err := commandsForAction(cfg, "up")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(cmds) != 2 {
-			t.Fatalf("len = %d, want 2", len(cmds))
+		if len(pcs) != 2 {
+			t.Fatalf("len = %d, want 2", len(pcs))
 		}
-		if cmds[0][0].Command != "echo up-a" {
-			t.Errorf("cmds[0][0].Command = %q, want %q", cmds[0][0].Command, "echo up-a")
+		if pcs[0].Project.Name != "svc-a" {
+			t.Errorf("pcs[0].Project.Name = %q, want %q", pcs[0].Project.Name, "svc-a")
 		}
-		if len(cmds[1]) != 2 {
-			t.Fatalf("len(cmds[1]) = %d, want 2", len(cmds[1]))
+		if pcs[0].Commands[0].Command != "echo up-a" {
+			t.Errorf("pcs[0].Commands[0].Command = %q, want %q", pcs[0].Commands[0].Command, "echo up-a")
+		}
+		if len(pcs[1].Commands) != 2 {
+			t.Fatalf("len(pcs[1].Commands) = %d, want 2", len(pcs[1].Commands))
 		}
 	})
 
 	t.Run("action down", func(t *testing.T) {
-		cmds, err := commandsForAction(cfg, "down")
+		pcs, err := commandsForAction(cfg, "down")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if cmds[0][0].Command != "echo down-a" {
-			t.Errorf("cmds[0][0].Command = %q, want %q", cmds[0][0].Command, "echo down-a")
+		if pcs[0].Commands[0].Command != "echo down-a" {
+			t.Errorf("pcs[0].Commands[0].Command = %q, want %q", pcs[0].Commands[0].Command, "echo down-a")
 		}
 	})
 

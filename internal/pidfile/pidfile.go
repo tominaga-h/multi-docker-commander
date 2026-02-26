@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"mdc/internal/config"
 )
 
 // BaseDir overrides the default PID directory for testing.
@@ -20,11 +22,11 @@ func baseDir() (string, error) {
 	if BaseDir != "" {
 		return BaseDir, nil
 	}
-	home, err := os.UserHomeDir()
+	base, err := config.BaseMDCDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".config", "mdc", "pids"), nil
+	return filepath.Join(base, "pids"), nil
 }
 
 func Dir(configName string) (string, error) {
@@ -142,13 +144,23 @@ func LoadAllConfigs() (map[string]map[string][]Entry, error) {
 	return result, nil
 }
 
+// StopFunc is called for each tracked process before it is killed.
+type StopFunc func(projectName, command string, pid int)
+
 func KillAll(configName string) error {
+	return KillAllWithCallback(configName, nil)
+}
+
+func KillAllWithCallback(configName string, onStop StopFunc) error {
 	projects, err := LoadAll(configName)
 	if err != nil {
 		return err
 	}
-	for _, entries := range projects {
+	for projectName, entries := range projects {
 		for _, e := range entries {
+			if onStop != nil {
+				onStop(projectName, e.Command, e.PID)
+			}
 			if p, err := os.FindProcess(e.PID); err == nil {
 				p.Kill()
 				p.Wait()

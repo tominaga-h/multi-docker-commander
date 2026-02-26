@@ -13,71 +13,78 @@ import (
 	"mdc/internal/pidfile"
 )
 
+type projectCommands struct {
+	Project  config.Project
+	Commands []config.CommandItem
+}
+
 func Run(cfg *config.Config, action string, configName string) error {
-	commands, err := commandsForAction(cfg, action)
+	pcs, err := commandsForAction(cfg, action)
 	if err != nil {
 		return err
 	}
 
 	switch cfg.ExecutionMode {
 	case "sequential":
-		return runSequential(cfg.Projects, commands, configName)
+		return runSequential(pcs, configName)
 	case "parallel":
-		return runParallel(cfg.Projects, commands, configName)
+		return runParallel(pcs, configName)
 	default:
 		return fmt.Errorf("unknown execution_mode: %q", cfg.ExecutionMode)
 	}
 }
 
-func commandsForAction(cfg *config.Config, action string) ([][]config.CommandItem, error) {
-	result := make([][]config.CommandItem, len(cfg.Projects))
+func commandsForAction(cfg *config.Config, action string) ([]projectCommands, error) {
+	result := make([]projectCommands, len(cfg.Projects))
 	for i, p := range cfg.Projects {
+		var cmds []config.CommandItem
 		switch action {
 		case "up":
-			result[i] = p.Commands.Up
+			cmds = p.Commands.Up
 		case "down":
-			result[i] = p.Commands.Down
+			cmds = p.Commands.Down
 		default:
 			return nil, fmt.Errorf("unknown action: %q", action)
 		}
-		if len(result[i]) == 0 {
+		if len(cmds) == 0 {
 			return nil, fmt.Errorf("project %q: no commands defined for %q", p.Name, action)
 		}
+		result[i] = projectCommands{Project: p, Commands: cmds}
 	}
 	return result, nil
 }
 
-func runSequential(projects []config.Project, commands [][]config.CommandItem, configName string) error {
-	for i, p := range projects {
-		if err := validateProjectPath(p); err != nil {
+func runSequential(pcs []projectCommands, configName string) error {
+	for _, pc := range pcs {
+		if err := validateProjectPath(pc.Project); err != nil {
 			return err
 		}
-		for _, item := range commands[i] {
-			if err := execCommand(p, item, configName, false); err != nil {
+		for _, item := range pc.Commands {
+			if err := execCommand(pc.Project, item, configName, false); err != nil {
 				return err
 			}
 		}
-		logger.ProjectDone(p.Name)
+		logger.ProjectDone(pc.Project.Name)
 	}
 	return nil
 }
 
-func runParallel(projects []config.Project, commands [][]config.CommandItem, configName string) error {
-	var wg sync.WaitGroup
-	errs := make([]error, len(projects))
-
-	for _, p := range projects {
-		if err := validateProjectPath(p); err != nil {
+func runParallel(pcs []projectCommands, configName string) error {
+	for _, pc := range pcs {
+		if err := validateProjectPath(pc.Project); err != nil {
 			return err
 		}
 	}
 
-	for i, p := range projects {
+	var wg sync.WaitGroup
+	errs := make([]error, len(pcs))
+
+	for i, pc := range pcs {
 		wg.Add(1)
-		go func(idx int, proj config.Project, cmds []config.CommandItem) {
+		go func(idx int, pc projectCommands) {
 			defer wg.Done()
-			errs[idx] = runProjectBuffered(proj, cmds, configName)
-		}(i, p, commands[i])
+			errs[idx] = runProjectBuffered(pc, configName)
+		}(i, pc)
 	}
 
 	wg.Wait()
@@ -94,62 +101,74 @@ func runParallel(projects []config.Project, commands [][]config.CommandItem, con
 	return nil
 }
 
-func runProjectBuffered(p config.Project, cmds []config.CommandItem, configName string) error {
-	for _, item := range cmds {
-		if err := execCommand(p, item, configName, true); err != nil {
+func runProjectBuffered(pc projectCommands, configName string) error {
+	for _, item := range pc.Commands {
+		if err := execCommand(pc.Project, item, configName, true); err != nil {
 			return err
 		}
 	}
-	logger.ProjectDone(p.Name)
+	logger.ProjectDone(pc.Project.Name)
 	return nil
 }
 
 func execCommand(p config.Project, item config.CommandItem, configName string, buffered bool) error {
 	logger.Start(p.Name, item.Command)
 
+	if item.Background {
+		return execBackgroundCommand(p, item, configName)
+	}
+
 	cmd := newShellCommand(item.Command, p.Path)
 
-	if item.Background {
-		setSysProcAttr(cmd)
-		cmd.Stdin = nil
-		cmd.Stdout = nil
-		cmd.Stderr = nil
-
-		if err := cmd.Start(); err != nil {
-			logger.Error(p.Name, item.Command, err)
-			return fmt.Errorf("project %q: background command %q failed to start: %w", p.Name, item.Command, err)
-		}
-
-		if err := pidfile.Append(configName, p.Name, pidfile.Entry{
-			PID:     cmd.Process.Pid,
-			Command: item.Command,
-			Dir:     p.Path,
-		}); err != nil {
-			return fmt.Errorf("project %q: failed to save PID: %w", p.Name, err)
-		}
-		logger.Background(p.Name, item.Command, cmd.Process.Pid)
-		return nil
-	}
-
 	if hasPTYSupport() && isTerminal(os.Stdout) {
-		if !buffered {
-			logger.Border()
-		}
-		output, err := execWithPTY(cmd, buffered)
-		if !buffered {
-			logger.Border()
-		}
-		if err != nil {
-			logger.Error(p.Name, item.Command, err)
-			if buffered && output != "" {
-				logger.Output(p.Name, output)
-			}
-			return fmt.Errorf("project %q: command %q failed: %w", p.Name, item.Command, err)
-		}
-		logger.Success(p.Name, item.Command)
-		return nil
+		return execForegroundPTY(p, item, cmd, buffered)
+	}
+	return execForegroundStd(p, item, cmd, buffered)
+}
+
+func execBackgroundCommand(p config.Project, item config.CommandItem, configName string) error {
+	cmd := newShellCommand(item.Command, p.Path)
+	setSysProcAttr(cmd)
+	cmd.Stdin = nil
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+
+	if err := cmd.Start(); err != nil {
+		logger.Error(p.Name, item.Command, err)
+		return fmt.Errorf("project %q: background command %q failed to start: %w", p.Name, item.Command, err)
 	}
 
+	if err := pidfile.Append(configName, p.Name, pidfile.Entry{
+		PID:     cmd.Process.Pid,
+		Command: item.Command,
+		Dir:     p.Path,
+	}); err != nil {
+		return fmt.Errorf("project %q: failed to save PID: %w", p.Name, err)
+	}
+	logger.Background(p.Name, item.Command, cmd.Process.Pid)
+	return nil
+}
+
+func execForegroundPTY(p config.Project, item config.CommandItem, cmd *exec.Cmd, buffered bool) error {
+	if !buffered {
+		logger.Border()
+	}
+	output, err := execWithPTY(cmd, buffered)
+	if !buffered {
+		logger.Border()
+	}
+	if err != nil {
+		logger.Error(p.Name, item.Command, err)
+		if buffered && output != "" {
+			logger.Output(p.Name, output)
+		}
+		return fmt.Errorf("project %q: command %q failed: %w", p.Name, item.Command, err)
+	}
+	logger.Success(p.Name, item.Command)
+	return nil
+}
+
+func execForegroundStd(p config.Project, item config.CommandItem, cmd *exec.Cmd, buffered bool) error {
 	if buffered {
 		var stdoutBuf, stderrBuf bytes.Buffer
 		cmd.Stdout = &stdoutBuf
@@ -157,8 +176,7 @@ func execCommand(p config.Project, item config.CommandItem, configName string, b
 
 		if err := cmd.Run(); err != nil {
 			logger.Error(p.Name, item.Command, err)
-			combined := stderrBuf.String() + stdoutBuf.String()
-			logger.Output(p.Name, combined)
+			logger.Output(p.Name, stderrBuf.String()+stdoutBuf.String())
 			return fmt.Errorf("project %q: command %q failed: %w", p.Name, item.Command, err)
 		}
 	} else {
@@ -173,7 +191,6 @@ func execCommand(p config.Project, item config.CommandItem, configName string, b
 			return fmt.Errorf("project %q: command %q failed: %w", p.Name, item.Command, err)
 		}
 	}
-
 	logger.Success(p.Name, item.Command)
 	return nil
 }

@@ -94,52 +94,42 @@ func outputBorder() string {
 	return strings.Repeat("=", terminalWidth())
 }
 
-func Border() {
+func writef(format string, args ...any) {
 	mu.Lock()
 	defer mu.Unlock()
-	fmt.Fprintln(out, outputBorder())
+	fmt.Fprintf(out, format, args...)
+}
+
+func Border() {
+	writef("%s\n", outputBorder())
 }
 
 func Start(projectName, cmd string) {
-	mu.Lock()
-	defer mu.Unlock()
-	fmt.Fprintf(out, "🚀 [%s] Executing: %s\n", prefix(projectName), colorCmd(cmd))
+	writef("🚀 [%s] Executing: %s\n", prefix(projectName), colorCmd(cmd))
 }
 
 func Success(projectName, cmd string) {
-	mu.Lock()
-	defer mu.Unlock()
-	fmt.Fprintf(out, "✅ [%s] Completed: %s\n", prefix(projectName), colorCmd(cmd))
+	writef("✅ [%s] Completed: %s\n", prefix(projectName), colorCmd(cmd))
 }
 
 func Error(projectName, cmd string, err error) {
-	mu.Lock()
-	defer mu.Unlock()
-	fmt.Fprintf(out, "❌ [%s] Failed: %s — %s\n", prefix(projectName), colorCmd(cmd), err)
+	writef("❌ [%s] Failed: %s — %s\n", prefix(projectName), colorCmd(cmd), err)
 }
 
 func Background(projectName, cmd string, pid int) {
-	mu.Lock()
-	defer mu.Unlock()
-	fmt.Fprintf(out, "🔄 [%s] Background: %s (PID: %s)\n", prefix(projectName), colorCmd(cmd), colorPID(pid))
+	writef("🔄 [%s] Background: %s (PID: %s)\n", prefix(projectName), colorCmd(cmd), colorPID(pid))
 }
 
 func Stop(projectName, cmd string, pid int) {
-	mu.Lock()
-	defer mu.Unlock()
-	fmt.Fprintf(out, "🛑 [%s] Stopping: %s (PID: %s)\n", prefix(projectName), colorCmd(cmd), colorPID(pid))
+	writef("🛑 [%s] Stopping: %s (PID: %s)\n", prefix(projectName), colorCmd(cmd), colorPID(pid))
 }
 
 func ProjectDone(projectName string) {
-	mu.Lock()
-	defer mu.Unlock()
-	fmt.Fprintf(out, "✅ [%s] All commands completed\n", prefix(projectName))
+	writef("✅ [%s] All commands completed\n", prefix(projectName))
 }
 
 func ProjectFailed(projectName string, err error) {
-	mu.Lock()
-	defer mu.Unlock()
-	fmt.Fprintf(out, "❌ [%s] Aborted — %s\n", prefix(projectName), err)
+	writef("❌ [%s] Aborted — %s\n", prefix(projectName), err)
 }
 
 func Output(projectName, output string) {

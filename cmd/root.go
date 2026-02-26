@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	"mdc/internal/config"
+	"mdc/internal/runner"
+
 	"github.com/spf13/cobra"
 )
 
@@ -17,6 +20,18 @@ repositories. Define your projects in a YAML config file and run
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func loadAndRun(configName, action string) {
+	cfg, err := config.Load(configName)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	if err := runner.Run(cfg, action, configName); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
