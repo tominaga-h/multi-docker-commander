@@ -230,8 +230,8 @@ projects:
 		if err == nil {
 			t.Fatal("LoadFromDir() expected error, got nil")
 		}
-		if !strings.Contains(err.Error(), "failed to read config file") {
-			t.Errorf("error = %q, want containing 'failed to read config file'", err.Error())
+		if !strings.Contains(err.Error(), "config file not found") {
+			t.Errorf("error = %q, want containing 'config file not found'", err.Error())
 		}
 	})
 
@@ -267,6 +267,85 @@ projects:
 		}
 		if !strings.Contains(err.Error(), "invalid config") {
 			t.Errorf("error = %q, want containing 'invalid config'", err.Error())
+		}
+	})
+
+	t.Run("auto-resolves .yaml extension", func(t *testing.T) {
+		dir := t.TempDir()
+		yaml := `execution_mode: sequential
+projects:
+  - name: svc
+    path: /tmp
+    commands:
+      up: ["echo up"]
+`
+		if err := os.WriteFile(filepath.Join(dir, "myconfig.yaml"), []byte(yaml), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := LoadFromDir(dir, "myconfig")
+		if err != nil {
+			t.Fatalf("LoadFromDir() error: %v", err)
+		}
+		if cfg.ExecutionMode != "sequential" {
+			t.Errorf("ExecutionMode = %q, want %q", cfg.ExecutionMode, "sequential")
+		}
+		if cfg.Projects[0].Name != "svc" {
+			t.Errorf("Projects[0].Name = %q, want %q", cfg.Projects[0].Name, "svc")
+		}
+	})
+
+	t.Run("explicit .yaml extension", func(t *testing.T) {
+		dir := t.TempDir()
+		yaml := `execution_mode: parallel
+projects:
+  - name: app
+    path: /tmp
+    commands:
+      up: ["echo up"]
+`
+		if err := os.WriteFile(filepath.Join(dir, "project.yaml"), []byte(yaml), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := LoadFromDir(dir, "project.yaml")
+		if err != nil {
+			t.Fatalf("LoadFromDir() error: %v", err)
+		}
+		if cfg.ExecutionMode != "parallel" {
+			t.Errorf("ExecutionMode = %q, want %q", cfg.ExecutionMode, "parallel")
+		}
+	})
+
+	t.Run(".yml takes priority over .yaml", func(t *testing.T) {
+		dir := t.TempDir()
+		ymlContent := `execution_mode: parallel
+projects:
+  - name: from-yml
+    path: /tmp
+    commands:
+      up: ["echo up"]
+`
+		yamlContent := `execution_mode: sequential
+projects:
+  - name: from-yaml
+    path: /tmp
+    commands:
+      up: ["echo up"]
+`
+		if err := os.WriteFile(filepath.Join(dir, "both.yml"), []byte(ymlContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "both.yaml"), []byte(yamlContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := LoadFromDir(dir, "both")
+		if err != nil {
+			t.Fatalf("LoadFromDir() error: %v", err)
+		}
+		if cfg.Projects[0].Name != "from-yml" {
+			t.Errorf("Projects[0].Name = %q, want %q (should prefer .yml)", cfg.Projects[0].Name, "from-yml")
 		}
 	})
 

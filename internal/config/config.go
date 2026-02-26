@@ -52,10 +52,24 @@ func Load(name string) (*Config, error) {
 	return LoadFromDir(configDir, name)
 }
 
-func LoadFromDir(configDir, name string) (*Config, error) {
+func resolveConfigPath(configDir, name string) (string, error) {
 	path := filepath.Join(configDir, name)
-	if filepath.Ext(path) == "" {
-		path += ".yml"
+	if filepath.Ext(path) != "" {
+		return path, nil
+	}
+	for _, ext := range []string{".yml", ".yaml"} {
+		candidate := path + ext
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("config file not found: tried %s.yml and %s.yaml", path, path)
+}
+
+func LoadFromDir(configDir, name string) (*Config, error) {
+	path, err := resolveConfigPath(configDir, name)
+	if err != nil {
+		return nil, err
 	}
 
 	data, err := os.ReadFile(path)
