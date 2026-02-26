@@ -12,6 +12,16 @@
 
 ## インストール
 
+### GitHub Releases からダウンロード
+
+[最新リリース](https://github.com/tominaga-h/multi-docker-compose/releases/latest)からビルド済みバイナリをダウンロードできます。
+
+```bash
+curl -L -o mdc https://github.com/tominaga-h/multi-docker-compose/releases/download/v0.1.0/mdc
+chmod +x mdc
+sudo mv mdc /usr/local/bin/
+```
+
 ### ソースからビルド
 
 ```bash
