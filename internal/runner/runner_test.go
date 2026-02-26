@@ -136,6 +136,9 @@ func TestNewShellCommand(t *testing.T) {
 	if len(args) != 3 || args[0] != "sh" || args[1] != "-c" || args[2] != "echo hello" {
 		t.Errorf("Args = %v, want [sh -c echo hello]", args)
 	}
+	if cmd.Stdin != os.Stdin {
+		t.Error("Stdin should be os.Stdin so that TTY-dependent commands (e.g. docker compose exec) work")
+	}
 }
 
 func TestRunSequential(t *testing.T) {

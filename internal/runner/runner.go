@@ -125,6 +125,7 @@ func runProjectBuffered(p config.Project, cmds []string) error {
 func newShellCommand(cmdStr, dir string) *exec.Cmd {
 	cmd := exec.Command("sh", "-c", cmdStr)
 	cmd.Dir = dir
+	cmd.Stdin = os.Stdin
 	return cmd
 }
 
