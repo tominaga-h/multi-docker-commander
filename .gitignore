@@ -1,1 +1,38 @@
+# OS
 .DS_Store
+Thumbs.db
+
+# Go binary
+/mdc
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go test
+*.test
+*.out
+cover.html
+coverage.txt
+
+# Go vendor (uncomment if not vendoring)
+# vendor/
+
+# Go workspace
+go.work
+go.work.sum
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+
+# Debug
+__debug_bin*
