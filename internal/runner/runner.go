@@ -10,9 +10,10 @@ import (
 
 	"mdc/internal/config"
 	"mdc/internal/logger"
+	"mdc/internal/pidfile"
 )
 
-func Run(cfg *config.Config, action string) error {
+func Run(cfg *config.Config, action string, configName string) error {
 	commands, err := commandsForAction(cfg, action)
 	if err != nil {
 		return err
@@ -20,16 +21,16 @@ func Run(cfg *config.Config, action string) error {
 
 	switch cfg.ExecutionMode {
 	case "sequential":
-		return runSequential(cfg.Projects, commands)
+		return runSequential(cfg.Projects, commands, configName)
 	case "parallel":
-		return runParallel(cfg.Projects, commands)
+		return runParallel(cfg.Projects, commands, configName)
 	default:
 		return fmt.Errorf("unknown execution_mode: %q", cfg.ExecutionMode)
 	}
 }
 
-func commandsForAction(cfg *config.Config, action string) ([][]string, error) {
-	result := make([][]string, len(cfg.Projects))
+func commandsForAction(cfg *config.Config, action string) ([][]config.CommandItem, error) {
+	result := make([][]config.CommandItem, len(cfg.Projects))
 	for i, p := range cfg.Projects {
 		switch action {
 		case "up":
@@ -46,30 +47,22 @@ func commandsForAction(cfg *config.Config, action string) ([][]string, error) {
 	return result, nil
 }
 
-func runSequential(projects []config.Project, commands [][]string) error {
+func runSequential(projects []config.Project, commands [][]config.CommandItem, configName string) error {
 	for i, p := range projects {
 		if err := validateProjectPath(p); err != nil {
 			return err
 		}
-		for _, cmdStr := range commands[i] {
-			logger.Start(p.Name, cmdStr)
-
-			cmd := newShellCommand(cmdStr, p.Path)
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-
-			if err := cmd.Run(); err != nil {
-				logger.Error(p.Name, cmdStr, err)
-				return fmt.Errorf("project %q: command %q failed: %w", p.Name, cmdStr, err)
+		for _, item := range commands[i] {
+			if err := execCommand(p, item, configName, false); err != nil {
+				return err
 			}
-			logger.Success(p.Name, cmdStr)
 		}
 		logger.ProjectDone(p.Name)
 	}
 	return nil
 }
 
-func runParallel(projects []config.Project, commands [][]string) error {
+func runParallel(projects []config.Project, commands [][]config.CommandItem, configName string) error {
 	var wg sync.WaitGroup
 	errs := make([]error, len(projects))
 
@@ -81,9 +74,9 @@ func runParallel(projects []config.Project, commands [][]string) error {
 
 	for i, p := range projects {
 		wg.Add(1)
-		go func(idx int, proj config.Project, cmds []string) {
+		go func(idx int, proj config.Project, cmds []config.CommandItem) {
 			defer wg.Done()
-			errs[idx] = runProjectBuffered(proj, cmds)
+			errs[idx] = runProjectBuffered(proj, cmds, configName)
 		}(i, p, commands[i])
 	}
 
@@ -101,24 +94,65 @@ func runParallel(projects []config.Project, commands [][]string) error {
 	return nil
 }
 
-func runProjectBuffered(p config.Project, cmds []string) error {
-	for _, cmdStr := range cmds {
-		logger.Start(p.Name, cmdStr)
+func runProjectBuffered(p config.Project, cmds []config.CommandItem, configName string) error {
+	for _, item := range cmds {
+		if err := execCommand(p, item, configName, true); err != nil {
+			return err
+		}
+	}
+	logger.ProjectDone(p.Name)
+	return nil
+}
 
+func execCommand(p config.Project, item config.CommandItem, configName string, buffered bool) error {
+	logger.Start(p.Name, item.Command)
+
+	cmd := newShellCommand(item.Command, p.Path)
+
+	if item.Background {
+		setSysProcAttr(cmd)
+		cmd.Stdin = nil
+		cmd.Stdout = nil
+		cmd.Stderr = nil
+
+		if err := cmd.Start(); err != nil {
+			logger.Error(p.Name, item.Command, err)
+			return fmt.Errorf("project %q: background command %q failed to start: %w", p.Name, item.Command, err)
+		}
+
+		if err := pidfile.Append(configName, p.Name, pidfile.Entry{
+			PID:     cmd.Process.Pid,
+			Command: item.Command,
+			Dir:     p.Path,
+		}); err != nil {
+			return fmt.Errorf("project %q: failed to save PID: %w", p.Name, err)
+		}
+		logger.Background(p.Name, item.Command, cmd.Process.Pid)
+		return nil
+	}
+
+	if buffered {
 		var stdoutBuf, stderrBuf bytes.Buffer
-		cmd := newShellCommand(cmdStr, p.Path)
 		cmd.Stdout = &stdoutBuf
 		cmd.Stderr = &stderrBuf
 
 		if err := cmd.Run(); err != nil {
-			logger.Error(p.Name, cmdStr, err)
+			logger.Error(p.Name, item.Command, err)
 			combined := stderrBuf.String() + stdoutBuf.String()
 			logger.Output(p.Name, combined)
-			return fmt.Errorf("project %q: command %q failed: %w", p.Name, cmdStr, err)
+			return fmt.Errorf("project %q: command %q failed: %w", p.Name, item.Command, err)
 		}
-		logger.Success(p.Name, cmdStr)
+	} else {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		if err := cmd.Run(); err != nil {
+			logger.Error(p.Name, item.Command, err)
+			return fmt.Errorf("project %q: command %q failed: %w", p.Name, item.Command, err)
+		}
 	}
-	logger.ProjectDone(p.Name)
+
+	logger.Success(p.Name, item.Command)
 	return nil
 }
 

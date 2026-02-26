@@ -9,6 +9,7 @@ import (
 
 	"mdc/internal/config"
 	"mdc/internal/logger"
+	"mdc/internal/pidfile"
 	"mdc/internal/runner"
 )
 
@@ -46,14 +47,14 @@ projects:
 		t.Fatalf("LoadFromDir() error: %v", err)
 	}
 
-	if err := runner.Run(cfg, "up"); err != nil {
+	if err := runner.Run(cfg, "up", "test"); err != nil {
 		t.Fatalf("Run(up) error: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(projectDir, "up.txt")); err != nil {
 		t.Fatalf("up.txt should exist after 'up': %v", err)
 	}
 
-	if err := runner.Run(cfg, "down"); err != nil {
+	if err := runner.Run(cfg, "down", "test"); err != nil {
 		t.Fatalf("Run(down) error: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(projectDir, "up.txt")); !os.IsNotExist(err) {
@@ -93,7 +94,7 @@ projects:
 		t.Fatalf("LoadFromDir() error: %v", err)
 	}
 
-	if err := runner.Run(cfg, "up"); err != nil {
+	if err := runner.Run(cfg, "up", "multi"); err != nil {
 		t.Fatalf("Run(up) error: %v", err)
 	}
 
@@ -134,7 +135,7 @@ projects:
 		t.Fatalf("LoadFromDir() error: %v", err)
 	}
 
-	if err := runner.Run(cfg, "up"); err != nil {
+	if err := runner.Run(cfg, "up", "steps"); err != nil {
 		t.Fatalf("Run(up) error: %v", err)
 	}
 
@@ -172,7 +173,7 @@ projects:
 		t.Fatalf("LoadFromDir() error: %v", err)
 	}
 
-	err = runner.Run(cfg, "up")
+	err = runner.Run(cfg, "up", "fail")
 	if err == nil {
 		t.Fatal("Run(up) expected error, got nil")
 	}
@@ -203,7 +204,7 @@ projects:
 		t.Fatalf("LoadFromDir() error: %v", err)
 	}
 
-	err = runner.Run(cfg, "up")
+	err = runner.Run(cfg, "up", "bad")
 	if err == nil {
 		t.Fatal("Run(up) expected error for nonexistent path, got nil")
 	}
@@ -228,5 +229,61 @@ projects:
 	}
 	if !strings.Contains(err.Error(), "execution_mode") {
 		t.Errorf("error = %q, want containing 'execution_mode'", err.Error())
+	}
+}
+
+func TestBackgroundCommandIntegration(t *testing.T) {
+	configDir := t.TempDir()
+	projectDir := t.TempDir()
+	pidDir := t.TempDir()
+	oldBaseDir := pidfile.BaseDir
+	pidfile.BaseDir = pidDir
+	defer func() { pidfile.BaseDir = oldBaseDir }()
+
+	yaml := fmt.Sprintf(`execution_mode: sequential
+projects:
+  - name: daemon-svc
+    path: %s
+    commands:
+      up:
+        - "touch setup.txt"
+        - command: "sleep 60"
+          background: true
+`, projectDir)
+
+	writeConfig(t, configDir, "bg.yml", yaml)
+
+	cfg, err := config.LoadFromDir(configDir, "bg")
+	if err != nil {
+		t.Fatalf("LoadFromDir() error: %v", err)
+	}
+
+	if err := runner.Run(cfg, "up", "bg"); err != nil {
+		t.Fatalf("Run(up) error: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(projectDir, "setup.txt")); err != nil {
+		t.Error("setup.txt should exist (foreground command ran)")
+	}
+
+	entries, err := pidfile.Load("bg", "daemon-svc")
+	if err != nil {
+		t.Fatalf("pidfile.Load() error: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 PID entry, got %d", len(entries))
+	}
+	if !pidfile.IsRunning(entries[0].PID) {
+		t.Error("background process should be running")
+	}
+
+	// Simulate mdc down: kill background processes
+	if err := pidfile.KillAll("bg"); err != nil {
+		t.Fatalf("KillAll() error: %v", err)
+	}
+
+	// Verify process is stopped (give it a moment)
+	if pidfile.IsRunning(entries[0].PID) {
+		t.Error("background process should be stopped after KillAll")
 	}
 }

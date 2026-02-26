@@ -383,3 +383,104 @@ projects:
 		}
 	})
 }
+
+func TestCommandItemUnmarshalYAML(t *testing.T) {
+	t.Run("string format", func(t *testing.T) {
+		dir := t.TempDir()
+		yaml := `execution_mode: sequential
+projects:
+  - name: app
+    path: /tmp
+    commands:
+      up:
+        - "make up"
+        - "make run"
+`
+		if err := os.WriteFile(filepath.Join(dir, "test.yml"), []byte(yaml), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := LoadFromDir(dir, "test")
+		if err != nil {
+			t.Fatalf("LoadFromDir() error: %v", err)
+		}
+		up := cfg.Projects[0].Commands.Up
+		if len(up) != 2 {
+			t.Fatalf("len(Up) = %d, want 2", len(up))
+		}
+		if up[0].Command != "make up" || up[0].Background {
+			t.Errorf("Up[0] = %+v, want {Command:make up, Background:false}", up[0])
+		}
+		if up[1].Command != "make run" || up[1].Background {
+			t.Errorf("Up[1] = %+v, want {Command:make run, Background:false}", up[1])
+		}
+	})
+
+	t.Run("struct format with background", func(t *testing.T) {
+		dir := t.TempDir()
+		yaml := `execution_mode: sequential
+projects:
+  - name: app
+    path: /tmp
+    commands:
+      up:
+        - command: "npm run dev"
+          background: true
+        - command: "make build"
+`
+		if err := os.WriteFile(filepath.Join(dir, "test.yml"), []byte(yaml), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := LoadFromDir(dir, "test")
+		if err != nil {
+			t.Fatalf("LoadFromDir() error: %v", err)
+		}
+		up := cfg.Projects[0].Commands.Up
+		if len(up) != 2 {
+			t.Fatalf("len(Up) = %d, want 2", len(up))
+		}
+		if up[0].Command != "npm run dev" || !up[0].Background {
+			t.Errorf("Up[0] = %+v, want {Command:npm run dev, Background:true}", up[0])
+		}
+		if up[1].Command != "make build" || up[1].Background {
+			t.Errorf("Up[1] = %+v, want {Command:make build, Background:false}", up[1])
+		}
+	})
+
+	t.Run("mixed format", func(t *testing.T) {
+		dir := t.TempDir()
+		yaml := `execution_mode: sequential
+projects:
+  - name: app
+    path: /tmp
+    commands:
+      up:
+        - "docker-compose up -d"
+        - command: "npm run dev"
+          background: true
+        - "echo done"
+`
+		if err := os.WriteFile(filepath.Join(dir, "test.yml"), []byte(yaml), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		cfg, err := LoadFromDir(dir, "test")
+		if err != nil {
+			t.Fatalf("LoadFromDir() error: %v", err)
+		}
+		up := cfg.Projects[0].Commands.Up
+		if len(up) != 3 {
+			t.Fatalf("len(Up) = %d, want 3", len(up))
+		}
+		if up[0].Command != "docker-compose up -d" || up[0].Background {
+			t.Errorf("Up[0] = %+v, want {Command:docker-compose up -d, Background:false}", up[0])
+		}
+		if up[1].Command != "npm run dev" || !up[1].Background {
+			t.Errorf("Up[1] = %+v, want {Command:npm run dev, Background:true}", up[1])
+		}
+		if up[2].Command != "echo done" || up[2].Background {
+			t.Errorf("Up[2] = %+v, want {Command:echo done, Background:false}", up[2])
+		}
+	})
+}

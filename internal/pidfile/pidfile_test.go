@@ -1,0 +1,203 @@
+package pidfile
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func withTempBaseDir(t *testing.T) func() {
+	t.Helper()
+	dir := t.TempDir()
+	old := BaseDir
+	BaseDir = dir
+	return func() { BaseDir = old }
+}
+
+func TestSaveAndLoad(t *testing.T) {
+	cleanup := withTempBaseDir(t)
+	defer cleanup()
+
+	entries := []Entry{
+		{PID: 1234, Command: "npm run dev"},
+		{PID: 5678, Command: "make watch"},
+	}
+
+	if err := Save("myconfig", "frontend", entries); err != nil {
+		t.Fatalf("Save() error: %v", err)
+	}
+
+	loaded, err := Load("myconfig", "frontend")
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if len(loaded) != 2 {
+		t.Fatalf("len(loaded) = %d, want 2", len(loaded))
+	}
+	if loaded[0].PID != 1234 || loaded[0].Command != "npm run dev" {
+		t.Errorf("loaded[0] = %+v, want {PID:1234, Command:npm run dev}", loaded[0])
+	}
+	if loaded[1].PID != 5678 || loaded[1].Command != "make watch" {
+		t.Errorf("loaded[1] = %+v, want {PID:5678, Command:make watch}", loaded[1])
+	}
+}
+
+func TestAppend(t *testing.T) {
+	cleanup := withTempBaseDir(t)
+	defer cleanup()
+
+	if err := Append("cfg", "proj", Entry{PID: 100, Command: "cmd1"}); err != nil {
+		t.Fatalf("Append() error: %v", err)
+	}
+	if err := Append("cfg", "proj", Entry{PID: 200, Command: "cmd2"}); err != nil {
+		t.Fatalf("Append() error: %v", err)
+	}
+
+	loaded, err := Load("cfg", "proj")
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if len(loaded) != 2 {
+		t.Fatalf("len(loaded) = %d, want 2", len(loaded))
+	}
+	if loaded[0].PID != 100 {
+		t.Errorf("loaded[0].PID = %d, want 100", loaded[0].PID)
+	}
+	if loaded[1].PID != 200 {
+		t.Errorf("loaded[1].PID = %d, want 200", loaded[1].PID)
+	}
+}
+
+func TestLoadNonexistent(t *testing.T) {
+	cleanup := withTempBaseDir(t)
+	defer cleanup()
+
+	_, err := Load("noconfig", "noproj")
+	if err == nil {
+		t.Fatal("Load() expected error for nonexistent file, got nil")
+	}
+	if !os.IsNotExist(err) {
+		t.Errorf("expected os.IsNotExist error, got: %v", err)
+	}
+}
+
+func TestLoadAll(t *testing.T) {
+	cleanup := withTempBaseDir(t)
+	defer cleanup()
+
+	if err := Save("cfg", "projA", []Entry{{PID: 10, Command: "a"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := Save("cfg", "projB", []Entry{{PID: 20, Command: "b"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := LoadAll("cfg")
+	if err != nil {
+		t.Fatalf("LoadAll() error: %v", err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("len(result) = %d, want 2", len(result))
+	}
+	if len(result["projA"]) != 1 || result["projA"][0].PID != 10 {
+		t.Errorf("projA entries = %+v, want [{PID:10}]", result["projA"])
+	}
+	if len(result["projB"]) != 1 || result["projB"][0].PID != 20 {
+		t.Errorf("projB entries = %+v, want [{PID:20}]", result["projB"])
+	}
+}
+
+func TestLoadAllNonexistentDir(t *testing.T) {
+	cleanup := withTempBaseDir(t)
+	defer cleanup()
+
+	result, err := LoadAll("nonexistent")
+	if err != nil {
+		t.Fatalf("LoadAll() error: %v", err)
+	}
+	if result != nil {
+		t.Errorf("LoadAll() = %v, want nil for nonexistent dir", result)
+	}
+}
+
+func TestLoadAllConfigs(t *testing.T) {
+	cleanup := withTempBaseDir(t)
+	defer cleanup()
+
+	if err := Save("cfg1", "proj", []Entry{{PID: 1, Command: "x"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := Save("cfg2", "proj", []Entry{{PID: 2, Command: "y"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := LoadAllConfigs()
+	if err != nil {
+		t.Fatalf("LoadAllConfigs() error: %v", err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("len(result) = %d, want 2", len(result))
+	}
+	if _, ok := result["cfg1"]; !ok {
+		t.Error("expected cfg1 in result")
+	}
+	if _, ok := result["cfg2"]; !ok {
+		t.Error("expected cfg2 in result")
+	}
+}
+
+func TestKillAll(t *testing.T) {
+	cleanup := withTempBaseDir(t)
+	defer cleanup()
+
+	// Save some PID entries (use PID 0 which won't match any real process)
+	if err := Save("cfg", "proj", []Entry{{PID: 999999999, Command: "fake"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := KillAll("cfg"); err != nil {
+		t.Fatalf("KillAll() error: %v", err)
+	}
+
+	dir, err := Dir("cfg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		t.Errorf("PID directory should be removed after KillAll, err = %v", err)
+	}
+}
+
+func TestKillAllNonexistentConfig(t *testing.T) {
+	cleanup := withTempBaseDir(t)
+	defer cleanup()
+
+	if err := KillAll("nonexistent"); err != nil {
+		t.Fatalf("KillAll() should not error for nonexistent config, got: %v", err)
+	}
+}
+
+func TestIsRunning(t *testing.T) {
+	// Current process should be running
+	if !IsRunning(os.Getpid()) {
+		t.Error("IsRunning(os.Getpid()) = false, want true")
+	}
+
+	// A very large PID should not be running
+	if IsRunning(999999999) {
+		t.Error("IsRunning(999999999) = true, want false")
+	}
+}
+
+func TestDir(t *testing.T) {
+	cleanup := withTempBaseDir(t)
+	defer cleanup()
+
+	dir, err := Dir("myconfig")
+	if err != nil {
+		t.Fatalf("Dir() error: %v", err)
+	}
+	if filepath.Base(dir) != "myconfig" {
+		t.Errorf("Dir() base = %q, want %q", filepath.Base(dir), "myconfig")
+	}
+}

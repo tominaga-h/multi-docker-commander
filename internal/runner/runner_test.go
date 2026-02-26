@@ -8,6 +8,7 @@ import (
 
 	"mdc/internal/config"
 	"mdc/internal/logger"
+	"mdc/internal/pidfile"
 )
 
 func init() {
@@ -22,16 +23,16 @@ func TestCommandsForAction(t *testing.T) {
 				Name: "svc-a",
 				Path: "/tmp",
 				Commands: config.Commands{
-					Up:   []string{"echo up-a"},
-					Down: []string{"echo down-a"},
+					Up:   []config.CommandItem{{Command: "echo up-a"}},
+					Down: []config.CommandItem{{Command: "echo down-a"}},
 				},
 			},
 			{
 				Name: "svc-b",
 				Path: "/tmp",
 				Commands: config.Commands{
-					Up:   []string{"echo up-b1", "echo up-b2"},
-					Down: []string{"echo down-b"},
+					Up:   []config.CommandItem{{Command: "echo up-b1"}, {Command: "echo up-b2"}},
+					Down: []config.CommandItem{{Command: "echo down-b"}},
 				},
 			},
 		},
@@ -45,8 +46,8 @@ func TestCommandsForAction(t *testing.T) {
 		if len(cmds) != 2 {
 			t.Fatalf("len = %d, want 2", len(cmds))
 		}
-		if cmds[0][0] != "echo up-a" {
-			t.Errorf("cmds[0][0] = %q, want %q", cmds[0][0], "echo up-a")
+		if cmds[0][0].Command != "echo up-a" {
+			t.Errorf("cmds[0][0].Command = %q, want %q", cmds[0][0].Command, "echo up-a")
 		}
 		if len(cmds[1]) != 2 {
 			t.Fatalf("len(cmds[1]) = %d, want 2", len(cmds[1]))
@@ -58,8 +59,8 @@ func TestCommandsForAction(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if cmds[0][0] != "echo down-a" {
-			t.Errorf("cmds[0][0] = %q, want %q", cmds[0][0], "echo down-a")
+		if cmds[0][0].Command != "echo down-a" {
+			t.Errorf("cmds[0][0].Command = %q, want %q", cmds[0][0].Command, "echo down-a")
 		}
 	})
 
@@ -150,16 +151,16 @@ func TestRunSequential(t *testing.T) {
 				Name: "test-proj",
 				Path: dir,
 				Commands: config.Commands{
-					Up: []string{
-						"touch first.txt",
-						"touch second.txt",
+					Up: []config.CommandItem{
+						{Command: "touch first.txt"},
+						{Command: "touch second.txt"},
 					},
 				},
 			},
 		},
 	}
 
-	if err := Run(cfg, "up"); err != nil {
+	if err := Run(cfg, "up", "test-config"); err != nil {
 		t.Fatalf("Run() error: %v", err)
 	}
 
@@ -180,20 +181,20 @@ func TestRunParallel(t *testing.T) {
 				Name: "proj-a",
 				Path: dir1,
 				Commands: config.Commands{
-					Up: []string{"touch parallel_a.txt"},
+					Up: []config.CommandItem{{Command: "touch parallel_a.txt"}},
 				},
 			},
 			{
 				Name: "proj-b",
 				Path: dir2,
 				Commands: config.Commands{
-					Up: []string{"touch parallel_b.txt"},
+					Up: []config.CommandItem{{Command: "touch parallel_b.txt"}},
 				},
 			},
 		},
 	}
 
-	if err := Run(cfg, "up"); err != nil {
+	if err := Run(cfg, "up", "test-config"); err != nil {
 		t.Fatalf("Run() error: %v", err)
 	}
 
@@ -215,11 +216,11 @@ func TestRunCommandFailure(t *testing.T) {
 				{
 					Name:     "fail-proj",
 					Path:     dir,
-					Commands: config.Commands{Up: []string{"false"}},
+					Commands: config.Commands{Up: []config.CommandItem{{Command: "false"}}},
 				},
 			},
 		}
-		err := Run(cfg, "up")
+		err := Run(cfg, "up", "test-config")
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -235,11 +236,11 @@ func TestRunCommandFailure(t *testing.T) {
 				{
 					Name:     "fail-proj",
 					Path:     dir,
-					Commands: config.Commands{Up: []string{"false"}},
+					Commands: config.Commands{Up: []config.CommandItem{{Command: "false"}}},
 				},
 			},
 		}
-		err := Run(cfg, "up")
+		err := Run(cfg, "up", "test-config")
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -256,12 +257,12 @@ func TestRunInvalidPath(t *testing.T) {
 			{
 				Name:     "bad-proj",
 				Path:     "/nonexistent/path/xyz",
-				Commands: config.Commands{Up: []string{"echo hi"}},
+				Commands: config.Commands{Up: []config.CommandItem{{Command: "echo hi"}}},
 			},
 		},
 	}
 
-	err := Run(cfg, "up")
+	err := Run(cfg, "up", "test-config")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -278,16 +279,117 @@ func TestRunUnknownExecutionMode(t *testing.T) {
 			{
 				Name:     "proj",
 				Path:     dir,
-				Commands: config.Commands{Up: []string{"echo hi"}},
+				Commands: config.Commands{Up: []config.CommandItem{{Command: "echo hi"}}},
 			},
 		},
 	}
 
-	err := Run(cfg, "up")
+	err := Run(cfg, "up", "test-config")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
 	if !strings.Contains(err.Error(), "unknown execution_mode") {
 		t.Errorf("error = %q, want containing 'unknown execution_mode'", err.Error())
+	}
+}
+
+func TestRunBackgroundCommand(t *testing.T) {
+	dir := t.TempDir()
+	pidDir := t.TempDir()
+	oldBaseDir := pidfile.BaseDir
+	pidfile.BaseDir = pidDir
+	defer func() { pidfile.BaseDir = oldBaseDir }()
+
+	cfg := &config.Config{
+		ExecutionMode: "sequential",
+		Projects: []config.Project{
+			{
+				Name: "bg-proj",
+				Path: dir,
+				Commands: config.Commands{
+					Up: []config.CommandItem{
+						{Command: "sleep 60", Background: true},
+					},
+				},
+			},
+		},
+	}
+
+	if err := Run(cfg, "up", "test-bg"); err != nil {
+		t.Fatalf("Run() error: %v", err)
+	}
+
+	entries, err := pidfile.Load("test-bg", "bg-proj")
+	if err != nil {
+		t.Fatalf("pidfile.Load() error: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 PID entry, got %d", len(entries))
+	}
+	if entries[0].Command != "sleep 60" {
+		t.Errorf("Command = %q, want %q", entries[0].Command, "sleep 60")
+	}
+	if entries[0].PID <= 0 {
+		t.Errorf("PID = %d, want > 0", entries[0].PID)
+	}
+
+	if !pidfile.IsRunning(entries[0].PID) {
+		t.Error("background process should be running")
+	}
+
+	// Clean up
+	if p, err := os.FindProcess(entries[0].PID); err == nil {
+		p.Kill()
+		p.Wait()
+	}
+}
+
+func TestRunMixedForegroundAndBackground(t *testing.T) {
+	dir := t.TempDir()
+	pidDir := t.TempDir()
+	oldBaseDir := pidfile.BaseDir
+	pidfile.BaseDir = pidDir
+	defer func() { pidfile.BaseDir = oldBaseDir }()
+
+	cfg := &config.Config{
+		ExecutionMode: "sequential",
+		Projects: []config.Project{
+			{
+				Name: "mix-proj",
+				Path: dir,
+				Commands: config.Commands{
+					Up: []config.CommandItem{
+						{Command: "touch fg.txt"},
+						{Command: "sleep 60", Background: true},
+						{Command: "touch fg2.txt"},
+					},
+				},
+			},
+		},
+	}
+
+	if err := Run(cfg, "up", "test-mix"); err != nil {
+		t.Fatalf("Run() error: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(dir, "fg.txt")); err != nil {
+		t.Error("fg.txt should exist (foreground command before background)")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "fg2.txt")); err != nil {
+		t.Error("fg2.txt should exist (foreground command after background)")
+	}
+
+	entries, err := pidfile.Load("test-mix", "mix-proj")
+	if err != nil {
+		t.Fatalf("pidfile.Load() error: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 background PID, got %d", len(entries))
+	}
+
+	// Clean up
+	if p, err := os.FindProcess(entries[0].PID); err == nil {
+		p.Kill()
+		p.Wait()
 	}
 }

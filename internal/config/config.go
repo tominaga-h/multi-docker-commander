@@ -9,9 +9,28 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type CommandItem struct {
+	Command    string `yaml:"command"`
+	Background bool   `yaml:"background"`
+}
+
+func (c *CommandItem) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		c.Command = value.Value
+		return nil
+	}
+	type raw CommandItem
+	var r raw
+	if err := value.Decode(&r); err != nil {
+		return err
+	}
+	*c = CommandItem(r)
+	return nil
+}
+
 type Commands struct {
-	Up   []string `yaml:"up"`
-	Down []string `yaml:"down"`
+	Up   []CommandItem `yaml:"up"`
+	Down []CommandItem `yaml:"down"`
 }
 
 type Project struct {

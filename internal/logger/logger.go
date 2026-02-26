@@ -41,6 +41,18 @@ func Error(projectName, cmd string, err error) {
 	fmt.Fprintf(out, "❌ %s Failed: %s — %s\n", prefix(projectName), cmd, err)
 }
 
+func Background(projectName, cmd string, pid int) {
+	mu.Lock()
+	defer mu.Unlock()
+	fmt.Fprintf(out, "🔄 %s Background: %s (PID: %d)\n", prefix(projectName), cmd, pid)
+}
+
+func Stop(projectName, cmd string, pid int) {
+	mu.Lock()
+	defer mu.Unlock()
+	fmt.Fprintf(out, "🛑 %s Stopping: %s (PID: %d)\n", prefix(projectName), cmd, pid)
+}
+
 func ProjectDone(projectName string) {
 	mu.Lock()
 	defer mu.Unlock()
