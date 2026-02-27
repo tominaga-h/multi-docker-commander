@@ -3,13 +3,15 @@
 [![build](https://img.shields.io/github/actions/workflow/status/tominaga-h/multi-docker-compose/ci.yml?branch=main)](https://github.com/tominaga-h/multi-docker-compose/actions/workflows/ci.yml)
 [![version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/tominaga-h/multi-docker-compose/releases/tag/v0.1.0)
 
-複数リポジトリにまたがる Docker 環境の起動・停止を、1つのコマンドで一括管理・実行するための CLI ツール。
+**複数リポジトリにまたがる** Docker 環境の起動・停止を、**1つのコマンドで一括管理・実行** するための CLI ツール。
+
+`docker-compose` はバックグラウンド実行できる `-d` オプションが存在するが、`npm run dev` のようなフォアグラウンドでサーバーを起動するコマンドでも **mdc上でバックグラウンド（デーモン）化できる** し、**プロセスの管理（終了・再起動・ログ出力）もできる** 柔軟さを備えている。
 
 ## 特徴
 
 - 複数リポジトリの Docker Compose を `mdc up` / `mdc down` で一括操作
 - プロジェクト間の並列 (`parallel`) / 直列 (`sequential`) 実行モードを選択可能
-- バックグラウンドプロセスの管理と状態確認 (`mdc procs`)
+- バックグラウンドプロセスの管理と状態確認 (`mdc proc`)
 - プロジェクト名プレフィックス付きのログ出力で視認性を確保
 - YAML ベースのシンプルな設定ファイル
 
@@ -62,17 +64,19 @@ projects:
     path: "/path/to/frontend-repo"
     commands:
       up:
-        - "docker compose up -d"
+        - command: "docker compose up -d"
+        - command: "npm run dev"
+          background: true
       down:
-        - "docker compose down"
+        - command: "docker compose down"
 
   - name: "Backend-API"
     path: "/path/to/backend-api-repo"
     commands:
       up:
-        - "docker compose up -d"
+        - command: "docker compose up -d"
       down:
-        - "docker compose down"
+        - command: "docker compose down"
 ```
 
 ### 3. 起動と停止
@@ -83,6 +87,36 @@ mdc down myproject    # 全プロジェクトを停止
 ```
 
 拡張子 `.yml` は省略可能です。
+
+### 4. バックグラウンドプロセスの確認
+
+```bash
+mdc proc list
+mdc procs
+```
+
+以下のようにテーブル形式でバックグラウンドプロセスの一覧を表示します。
+
+```txt
++--------------+------------+-------------+------------------------+-------+---------+
+| CONFIG       | PROJECT    | COMMAND     | DIR                    |   PID | STATUS  |
++--------------+------------+-------------+------------------------+-------+---------+
+| myproject    | Frontend   | npm run dev | /path/to/frontend-repo | 88888 | Running |
++--------------+------------+-------------+------------------------+-------+---------+
+```
+
+### 5. バックグラウンドプロセスの終了・再起動
+
+```bash
+mdc proc stop <PID>
+mdc proc restart <PID>
+```
+
+### 6. バックグラウンドプロセスのログ出力を確認
+
+```bash
+mdc proc attach <PID>
+```
 
 ## 設定ファイル
 
@@ -96,27 +130,37 @@ mdc down myproject    # 全プロジェクトを停止
 | `projects` | Yes | プロジェクト定義のリスト (1つ以上) |
 | `projects[].name` | Yes | プロジェクト名 (ログ出力のプレフィックスに使用) |
 | `projects[].path` | Yes | プロジェクトのディレクトリパス (`~` 展開対応) |
-| `projects[].commands.up` | No | 起動時に実行するコマンドのリスト |
-| `projects[].commands.down` | No | 停止時に実行するコマンドのリスト |
+| `projects[].commands.up` | No | 起動時に実行するコマンドオブジェクトのリスト |
+| `projects[].commands.down` | No | 停止時に実行するコマンドオブジェクトのリスト |
+| `commands[][].command` | Yes | 実行するコマンド文字列 |
+| `commands[][].background` | No | `true` でバックグラウンド実行 (デフォルト: `false`) |
 
 ### コマンドの記述形式
 
-コマンドは文字列として記述できます:
+コマンドは `command` と `background` フィールドを持つオブジェクト形式で記述します:
 
 ```yaml
 commands:
   up:
-    - "docker compose up -d"
-    - "echo done"
+    - command: "docker compose up -d"
+      background: true
+    - command: "echo done"
 ```
 
-バックグラウンド実行が必要な場合はオブジェクト形式を使用します:
+`background` を省略するとフォアグラウンド実行（デフォルト）になります:
 
 ```yaml
 commands:
-  up:
-    - command: "npm run dev"
-      background: true
+  down:
+    - command: "docker compose down"
+```
+
+後方互換として、文字列での記述も引き続きサポートされています:
+
+```yaml
+commands:
+  down:
+    - "docker compose down"
 ```
 
 ### 実行モード
@@ -151,13 +195,44 @@ mdc list
 mdc ls
 ```
 
-### `mdc procs [config-name]`
+### `mdc proc` (エイリアス: `mdc procs`)
+
+バックグラウンドプロセスを管理します。サブコマンドを省略すると `proc list` として動作します。
+
+#### `mdc proc list [config-name]`
 
 mdc が管理しているバックグラウンドプロセスの一覧を表示します。設定名を省略すると全設定のプロセスを表示します。
 
 ```bash
-mdc procs              # 全設定のプロセスを表示
-mdc procs myproject    # 特定の設定のプロセスのみ表示
+mdc proc list              # 全設定のプロセスを表示
+mdc proc list myproject    # 特定の設定のプロセスのみ表示
+mdc procs                  # エイリアス (proc list と同等)
+```
+
+#### `mdc proc attach <PID>`
+
+バックグラウンドプロセスのログ出力をストリームします。Ctrl-C でデタッチできます（プロセスは継続）。
+
+```bash
+mdc proc attach 12345
+mdc proc attach 12345 --tail 50       # 末尾50行から表示
+mdc proc attach 12345 --no-follow     # 既存ログを出力して終了
+```
+
+#### `mdc proc stop <PID>`
+
+指定した PID のバックグラウンドプロセスを停止します。
+
+```bash
+mdc proc stop 12345
+```
+
+#### `mdc proc restart <PID>`
+
+指定した PID のバックグラウンドプロセスを再起動します。
+
+```bash
+mdc proc restart 12345
 ```
 
 ### `mdc --version`
@@ -188,6 +263,8 @@ make test             # internal パッケージのテスト
 make test-integration # 統合テスト
 make test-all         # 全テスト
 make test-cover       # カバレッジ付きテスト
+make lint             # go vet + golangci-lint
+make check            # lint + test-all
 ```
 
 ## ライセンス
