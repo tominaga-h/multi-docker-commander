@@ -136,6 +136,22 @@ func ProjectFailed(projectName string, err error) {
 	writef("❌ [%s] Aborted — %s\n", prefix(projectName), err)
 }
 
+func Attach(projectName, cmd string, pid int) {
+	writef("📎 [%s] Attached: %s (PID: %s)\n", prefix(projectName), colorCmd(cmd), colorPID(pid))
+}
+
+func Detach(projectName string) {
+	writef("📎 [%s] Detached\n", prefix(projectName))
+}
+
+func ProcessExited(projectName string, pid int) {
+	writef("💀 [%s] Process exited (PID: %s)\n", prefix(projectName), colorPID(pid))
+}
+
+func Warn(projectName, msg string) {
+	writef("⚠️  [%s] %s\n", prefix(projectName), msg)
+}
+
 func Output(projectName, output string) {
 	mu.Lock()
 	defer mu.Unlock()

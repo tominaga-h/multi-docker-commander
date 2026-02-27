@@ -6,6 +6,9 @@ build:
 build-v:
 	go build -ldflags "-X mdc/internal/version.Version=$(VERSION)" -o mdc .
 
+build-local:
+	make check && make build-v && ./mdc -v
+
 test:
 	go test ./internal/... -v
 

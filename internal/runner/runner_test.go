@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -343,6 +344,120 @@ func TestRunBackgroundCommand(t *testing.T) {
 	// Clean up
 	if p, err := os.FindProcess(entries[0].PID); err == nil {
 		_ = p.Kill()
+		_, _ = p.Wait()
+	}
+}
+
+func TestStartBackgroundProcessWithLogFile(t *testing.T) {
+	dir := t.TempDir()
+	logFile := filepath.Join(dir, "test.log")
+
+	pid, err := StartBackgroundProcess("echo hello-from-bg", dir, logFile)
+	if err != nil {
+		t.Fatalf("StartBackgroundProcess() error: %v", err)
+	}
+	if pid <= 0 {
+		t.Fatalf("PID = %d, want > 0", pid)
+	}
+
+	if p, err := os.FindProcess(pid); err == nil {
+		_, _ = p.Wait()
+	}
+
+	data, err := os.ReadFile(logFile)
+	if err != nil {
+		t.Fatalf("failed to read log file: %v", err)
+	}
+	if !strings.Contains(string(data), "hello-from-bg") {
+		t.Errorf("log file content = %q, want containing 'hello-from-bg'", string(data))
+	}
+}
+
+func TestStartBackgroundProcessLogFileExistsOnReturn(t *testing.T) {
+	dir := t.TempDir()
+	logFile := filepath.Join(dir, "wait.log")
+
+	pid, err := StartBackgroundProcess("sleep 60", dir, logFile)
+	if err != nil {
+		t.Fatalf("StartBackgroundProcess() error: %v", err)
+	}
+	defer func() {
+		if p, err := os.FindProcess(pid); err == nil {
+			_ = p.Kill()
+			_, _ = p.Wait()
+		}
+	}()
+
+	if _, err := os.Stat(logFile); err != nil {
+		t.Errorf("log file should exist immediately after StartBackgroundProcess returns: %v", err)
+	}
+}
+
+func TestStartBackgroundProcessLogFileRenamable(t *testing.T) {
+	dir := t.TempDir()
+	logFile := filepath.Join(dir, "_pending.log")
+
+	pid, err := StartBackgroundProcess("sleep 60", dir, logFile)
+	if err != nil {
+		t.Fatalf("StartBackgroundProcess() error: %v", err)
+	}
+	defer func() {
+		if p, err := os.FindProcess(pid); err == nil {
+			_ = p.Kill()
+			_, _ = p.Wait()
+		}
+	}()
+
+	renamed, err := pidfile.RenameProcLog(logFile, pid)
+	if err != nil {
+		t.Fatalf("RenameProcLog() should succeed after waitForFile: %v", err)
+	}
+	expected := filepath.Join(dir, fmt.Sprintf("%d.log", pid))
+	if renamed != expected {
+		t.Errorf("RenameProcLog() = %q, want %q", renamed, expected)
+	}
+}
+
+func TestStartBackgroundProcessPreservesANSI(t *testing.T) {
+	dir := t.TempDir()
+	logFile := filepath.Join(dir, "color.log")
+
+	// printf with ANSI escape: red "COLOR" reset
+	cmd := `printf '\033[31mCOLOR\033[0m\n'`
+	pid, err := StartBackgroundProcess(cmd, dir, logFile)
+	if err != nil {
+		t.Fatalf("StartBackgroundProcess() error: %v", err)
+	}
+
+	if p, err := os.FindProcess(pid); err == nil {
+		_, _ = p.Wait()
+	}
+
+	data, err := os.ReadFile(logFile)
+	if err != nil {
+		t.Fatalf("failed to read log file: %v", err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "COLOR") {
+		t.Fatalf("log should contain 'COLOR', got %q", content)
+	}
+	if !strings.Contains(content, "\033[31m") && !strings.Contains(content, "\x1b[31m") {
+		t.Errorf("log should contain ANSI escape codes for color, got %q", content)
+	}
+}
+
+func TestStartBackgroundProcessWithoutLogFile(t *testing.T) {
+	dir := t.TempDir()
+
+	pid, err := StartBackgroundProcess("echo no-log", dir, "")
+	if err != nil {
+		t.Fatalf("StartBackgroundProcess() error: %v", err)
+	}
+	if pid <= 0 {
+		t.Fatalf("PID = %d, want > 0", pid)
+	}
+
+	if p, err := os.FindProcess(pid); err == nil {
 		_, _ = p.Wait()
 	}
 }

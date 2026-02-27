@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"mdc/internal/config"
 	"mdc/internal/logger"
@@ -127,10 +129,15 @@ func execCommand(p config.Project, item config.CommandItem, configName string, b
 }
 
 func execBackgroundCommand(p config.Project, item config.CommandItem, configName string) error {
-	pid, err := StartBackgroundProcess(item.Command, p.Path)
+	tmpLog, _ := pidfile.ProcLogTmpPath(configName, p.Name)
+	pid, err := StartBackgroundProcess(item.Command, p.Path, tmpLog)
 	if err != nil {
 		logger.Error(p.Name, item.Command, err)
 		return fmt.Errorf("project %q: background command %q failed to start: %w", p.Name, item.Command, err)
+	}
+
+	if _, err := pidfile.RenameProcLog(tmpLog, pid); err != nil {
+		logger.Warn(p.Name, fmt.Sprintf("log rename failed: %v", err))
 	}
 
 	if err := pidfile.Append(configName, p.Name, pidfile.Entry{
@@ -145,17 +152,43 @@ func execBackgroundCommand(p config.Project, item config.CommandItem, configName
 }
 
 // StartBackgroundProcess starts a detached background process and returns its PID.
-func StartBackgroundProcess(command, dir string) (int, error) {
-	cmd := newShellCommand(command, dir)
+// If logFile is non-empty, the command is wrapped with the `script` utility so
+// that the child runs inside a PTY. This preserves ANSI color codes in the log.
+func StartBackgroundProcess(command, dir, logFile string) (int, error) {
+	var cmd *exec.Cmd
+	if logFile != "" {
+		if err := os.MkdirAll(filepath.Dir(logFile), 0755); err != nil {
+			return 0, fmt.Errorf("failed to create log directory: %w", err)
+		}
+		cmd = newScriptCommand(command, dir, logFile)
+	} else {
+		cmd = newShellCommand(command, dir)
+		cmd.Stdin = nil
+		cmd.Stdout = nil
+		cmd.Stderr = nil
+	}
 	setSysProcAttr(cmd)
-	cmd.Stdin = nil
-	cmd.Stdout = nil
-	cmd.Stderr = nil
 
 	if err := cmd.Start(); err != nil {
 		return 0, err
 	}
+
+	if logFile != "" {
+		waitForFile(logFile, 2*time.Second)
+	}
+
 	return cmd.Process.Pid, nil
+}
+
+// waitForFile polls until the file at path exists or the timeout elapses.
+func waitForFile(path string, timeout time.Duration) {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if _, err := os.Stat(path); err == nil {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 }
 
 func execForegroundPTY(p config.Project, item config.CommandItem, cmd *exec.Cmd, buffered bool) error {

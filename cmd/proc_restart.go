@@ -33,11 +33,15 @@ var procRestartCmd = &cobra.Command{
 		logger.Stop(projectName, entry.Command, pid)
 		_ = pidfile.GracefulKill(pid, 10*time.Second)
 
-		newPID, err := runner.StartBackgroundProcess(entry.Command, entry.Dir)
+		tmpLog, _ := pidfile.ProcLogTmpPath(configName, projectName)
+		newPID, err := runner.StartBackgroundProcess(entry.Command, entry.Dir, tmpLog)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "❌ [%s] Failed to restart %q: %v\n", projectName, entry.Command, err)
 			_ = pidfile.RemoveEntry(configName, projectName, pid)
 			os.Exit(1)
+		}
+		if _, err := pidfile.RenameProcLog(tmpLog, newPID); err != nil {
+			fmt.Fprintf(os.Stderr, "⚠️  Warning: log rename failed: %v\n", err)
 		}
 
 		if err := pidfile.RemoveEntry(configName, projectName, pid); err != nil {
