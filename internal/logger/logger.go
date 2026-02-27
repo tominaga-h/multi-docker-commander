@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"mdc/internal/config"
+
 	"github.com/jedib0t/go-pretty/v6/text"
 	"golang.org/x/term"
 )
@@ -150,6 +152,36 @@ func ProcessExited(projectName string, pid int) {
 
 func Warn(projectName, msg string) {
 	writef("⚠️  [%s] %s\n", prefix(projectName), msg)
+}
+
+func DryRunHeader(action, mode string) {
+	writef("📋 Dry-run: %s (mode: %s)\n", action, mode)
+	writef("%s\n\n", strings.Repeat("━", terminalWidth()))
+}
+
+func DryRunProject(projectName, path string, cmds []config.CommandItem, pathWarning string) {
+	writef("[%s]\n", prefix(projectName))
+	if pathWarning != "" {
+		writef("  📂 %s [%s]\n", path, pathWarning)
+	} else {
+		writef("  📂 %s\n", path)
+	}
+	for i, item := range cmds {
+		label := item.Command
+		if item.Background {
+			label += " [background]"
+		}
+		writef("    %d. %s\n", i+1, colorCmd(label))
+	}
+	writef("\n")
+}
+
+func DryRunStopEntry(projectName, command string, pid int) {
+	writef("  [%s] %s (PID: %s)\n", prefix(projectName), colorCmd(command), colorPID(pid))
+}
+
+func DryRunStopHeader() {
+	writef("🛑 Stopping background processes:\n")
 }
 
 func Output(projectName, output string) {

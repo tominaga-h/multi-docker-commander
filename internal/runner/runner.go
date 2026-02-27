@@ -20,6 +20,30 @@ type projectCommands struct {
 	Commands []config.CommandItem
 }
 
+func DryRun(cfg *config.Config, action string) error {
+	pcs, err := commandsForAction(cfg, action)
+	if err != nil {
+		return err
+	}
+
+	logger.DryRunHeader(action, cfg.ExecutionMode)
+
+	var invalidPaths []string
+	for _, pc := range pcs {
+		var warning string
+		if err := validateProjectPath(pc.Project); err != nil {
+			warning = "⚠️ Not Found"
+			invalidPaths = append(invalidPaths, fmt.Sprintf("project %q: %s", pc.Project.Name, pc.Project.Path))
+		}
+		logger.DryRunProject(pc.Project.Name, pc.Project.Path, pc.Commands, warning)
+	}
+
+	if len(invalidPaths) > 0 {
+		return fmt.Errorf("dry-run detected invalid paths:\n  %s", strings.Join(invalidPaths, "\n  "))
+	}
+	return nil
+}
+
 func Run(cfg *config.Config, action string, configName string) error {
 	pcs, err := commandsForAction(cfg, action)
 	if err != nil {

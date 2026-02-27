@@ -1,9 +1,11 @@
 package runner
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -11,6 +13,12 @@ import (
 	"mdc/internal/logger"
 	"mdc/internal/pidfile"
 )
+
+var ansiRe = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+func stripANSI(s string) string {
+	return ansiRe.ReplaceAllString(s, "")
+}
 
 func init() {
 	logger.SetOutput(os.Stderr)
@@ -443,6 +451,112 @@ func TestStartBackgroundProcessPreservesANSI(t *testing.T) {
 	}
 	if !strings.Contains(content, "\033[31m") && !strings.Contains(content, "\x1b[31m") {
 		t.Errorf("log should contain ANSI escape codes for color, got %q", content)
+	}
+}
+
+func TestDryRun(t *testing.T) {
+	dir := t.TempDir()
+	var buf bytes.Buffer
+	logger.SetOutput(&buf)
+	logger.ResetColors()
+	t.Cleanup(func() {
+		logger.SetOutput(os.Stderr)
+		logger.ResetColors()
+	})
+
+	cfg := &config.Config{
+		ExecutionMode: "sequential",
+		Projects: []config.Project{
+			{
+				Name: "svc-a",
+				Path: dir,
+				Commands: config.Commands{
+					Up: []config.CommandItem{
+						{Command: "echo hello"},
+						{Command: "sleep 60", Background: true},
+					},
+				},
+			},
+		},
+	}
+
+	if err := DryRun(cfg, "up"); err != nil {
+		t.Fatalf("DryRun() error: %v", err)
+	}
+
+	out := stripANSI(buf.String())
+	if !strings.Contains(out, "Dry-run: up") {
+		t.Errorf("output missing header: %q", out)
+	}
+	if !strings.Contains(out, "sequential") {
+		t.Errorf("output missing execution mode: %q", out)
+	}
+	if !strings.Contains(out, "svc-a") {
+		t.Errorf("output missing project name: %q", out)
+	}
+	if !strings.Contains(out, dir) {
+		t.Errorf("output missing project path: %q", out)
+	}
+	if !strings.Contains(out, "echo hello") {
+		t.Errorf("output missing command: %q", out)
+	}
+	if !strings.Contains(out, "[background]") {
+		t.Errorf("output missing background label: %q", out)
+	}
+
+	// Verify no files were created (commands were not executed)
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 0 {
+		t.Errorf("dry-run should not execute commands, but found files in %s", dir)
+	}
+}
+
+func TestDryRunInvalidPath(t *testing.T) {
+	var buf bytes.Buffer
+	logger.SetOutput(&buf)
+	logger.ResetColors()
+	t.Cleanup(func() {
+		logger.SetOutput(os.Stderr)
+		logger.ResetColors()
+	})
+
+	cfg := &config.Config{
+		ExecutionMode: "parallel",
+		Projects: []config.Project{
+			{
+				Name: "good",
+				Path: t.TempDir(),
+				Commands: config.Commands{
+					Up: []config.CommandItem{{Command: "echo ok"}},
+				},
+			},
+			{
+				Name: "bad",
+				Path: "/nonexistent/path/xyz",
+				Commands: config.Commands{
+					Up: []config.CommandItem{{Command: "echo fail"}},
+				},
+			},
+		},
+	}
+
+	err := DryRun(cfg, "up")
+	if err == nil {
+		t.Fatal("expected error for invalid path, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid paths") {
+		t.Errorf("error = %q, want containing 'invalid paths'", err.Error())
+	}
+
+	out := stripANSI(buf.String())
+	if !strings.Contains(out, "good") {
+		t.Error("output should include the valid project even when another path is invalid")
+	}
+	if !strings.Contains(out, "bad") {
+		t.Error("output should include the invalid project with warning")
+	}
+	if !strings.Contains(out, "Not Found") {
+		t.Errorf("output missing path warning: %q", out)
 	}
 }
 
