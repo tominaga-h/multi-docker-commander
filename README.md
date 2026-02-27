@@ -1,4 +1,4 @@
-# MDC (Multi-Docker-Compose)
+# multi-docker-compose (mdc)
 
 [![build](https://img.shields.io/github/actions/workflow/status/tominaga-h/multi-docker-compose/ci.yml?branch=main)](https://github.com/tominaga-h/multi-docker-compose/actions/workflows/ci.yml)
 [![version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/tominaga-h/multi-docker-compose/releases/tag/v0.1.0)
