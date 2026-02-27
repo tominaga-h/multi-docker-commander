@@ -342,8 +342,8 @@ func TestRunBackgroundCommand(t *testing.T) {
 
 	// Clean up
 	if p, err := os.FindProcess(entries[0].PID); err == nil {
-		p.Kill()
-		p.Wait()
+		_ = p.Kill()
+		_, _ = p.Wait()
 	}
 }
 
@@ -392,7 +392,7 @@ func TestRunMixedForegroundAndBackground(t *testing.T) {
 
 	// Clean up
 	if p, err := os.FindProcess(entries[0].PID); err == nil {
-		p.Kill()
-		p.Wait()
+		_ = p.Kill()
+		_, _ = p.Wait()
 	}
 }

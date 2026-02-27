@@ -127,26 +127,35 @@ func execCommand(p config.Project, item config.CommandItem, configName string, b
 }
 
 func execBackgroundCommand(p config.Project, item config.CommandItem, configName string) error {
-	cmd := newShellCommand(item.Command, p.Path)
+	pid, err := StartBackgroundProcess(item.Command, p.Path)
+	if err != nil {
+		logger.Error(p.Name, item.Command, err)
+		return fmt.Errorf("project %q: background command %q failed to start: %w", p.Name, item.Command, err)
+	}
+
+	if err := pidfile.Append(configName, p.Name, pidfile.Entry{
+		PID:     pid,
+		Command: item.Command,
+		Dir:     p.Path,
+	}); err != nil {
+		return fmt.Errorf("project %q: failed to save PID: %w", p.Name, err)
+	}
+	logger.Background(p.Name, item.Command, pid)
+	return nil
+}
+
+// StartBackgroundProcess starts a detached background process and returns its PID.
+func StartBackgroundProcess(command, dir string) (int, error) {
+	cmd := newShellCommand(command, dir)
 	setSysProcAttr(cmd)
 	cmd.Stdin = nil
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 
 	if err := cmd.Start(); err != nil {
-		logger.Error(p.Name, item.Command, err)
-		return fmt.Errorf("project %q: background command %q failed to start: %w", p.Name, item.Command, err)
+		return 0, err
 	}
-
-	if err := pidfile.Append(configName, p.Name, pidfile.Entry{
-		PID:     cmd.Process.Pid,
-		Command: item.Command,
-		Dir:     p.Path,
-	}); err != nil {
-		return fmt.Errorf("project %q: failed to save PID: %w", p.Name, err)
-	}
-	logger.Background(p.Name, item.Command, cmd.Process.Pid)
-	return nil
+	return cmd.Process.Pid, nil
 }
 
 func execForegroundPTY(p config.Project, item config.CommandItem, cmd *exec.Cmd, buffered bool) error {

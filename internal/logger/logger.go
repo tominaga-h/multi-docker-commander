@@ -97,7 +97,7 @@ func outputBorder() string {
 func writef(format string, args ...any) {
 	mu.Lock()
 	defer mu.Unlock()
-	fmt.Fprintf(out, format, args...)
+	_, _ = fmt.Fprintf(out, format, args...)
 }
 
 func Border() {
@@ -124,6 +124,10 @@ func Stop(projectName, cmd string, pid int) {
 	writef("🛑 [%s] Stopping: %s (PID: %s)\n", prefix(projectName), colorCmd(cmd), colorPID(pid))
 }
 
+func Stopped(projectName string) {
+	writef("✅ [%s] Stopped successfully\n", prefix(projectName))
+}
+
 func ProjectDone(projectName string) {
 	writef("✅ [%s] All commands completed\n", prefix(projectName))
 }
@@ -140,9 +144,9 @@ func Output(projectName, output string) {
 		return
 	}
 	border := outputBorder()
-	fmt.Fprintf(out, "   [%s] %s\n", prefix(projectName), border)
+	_, _ = fmt.Fprintf(out, "   [%s] %s\n", prefix(projectName), border)
 	for _, line := range strings.Split(trimmed, "\n") {
-		fmt.Fprintf(out, "   [%s] %s\n", prefix(projectName), line)
+		_, _ = fmt.Fprintf(out, "   [%s] %s\n", prefix(projectName), line)
 	}
-	fmt.Fprintf(out, "   [%s] %s\n", prefix(projectName), border)
+	_, _ = fmt.Fprintf(out, "   [%s] %s\n", prefix(projectName), border)
 }

@@ -2,9 +2,11 @@ package pidfile
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"mdc/internal/config"
 )
@@ -147,6 +149,8 @@ func LoadAllConfigs() (map[string]map[string][]Entry, error) {
 // StopFunc is called for each tracked process before it is killed.
 type StopFunc func(projectName, command string, pid int)
 
+const defaultGracefulTimeout = 10 * time.Second
+
 func KillAll(configName string) error {
 	return KillAllWithCallback(configName, nil)
 }
@@ -161,10 +165,7 @@ func KillAllWithCallback(configName string, onStop StopFunc) error {
 			if onStop != nil {
 				onStop(projectName, e.Command, e.PID)
 			}
-			if p, err := os.FindProcess(e.PID); err == nil {
-				p.Kill()
-				p.Wait()
-			}
+			_ = GracefulKill(e.PID, defaultGracefulTimeout)
 		}
 	}
 	dir, err := Dir(configName)
@@ -172,4 +173,69 @@ func KillAllWithCallback(configName string, onStop StopFunc) error {
 		return err
 	}
 	return os.RemoveAll(dir)
+}
+
+// FindByPID searches all PID files and returns the config name, project name,
+// and entry for the given PID. Returns an error if the PID is not found.
+func FindByPID(pid int) (configName, projectName string, entry Entry, err error) {
+	allConfigs, err := LoadAllConfigs()
+	if err != nil {
+		return "", "", Entry{}, err
+	}
+	for cn, projects := range allConfigs {
+		for pn, entries := range projects {
+			for _, e := range entries {
+				if e.PID == pid {
+					return cn, pn, e, nil
+				}
+			}
+		}
+	}
+	return "", "", Entry{}, fmt.Errorf("no tracked process with PID %d", pid)
+}
+
+// RemoveEntry removes a single PID entry from the project's PID file.
+// If no entries remain, the file is deleted. If no files remain in the
+// config directory, the directory is also removed.
+func RemoveEntry(configName, projectName string, pid int) error {
+	entries, err := Load(configName, projectName)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	filtered := make([]Entry, 0, len(entries))
+	for _, e := range entries {
+		if e.PID != pid {
+			filtered = append(filtered, e)
+		}
+	}
+
+	if len(filtered) == 0 {
+		path, err := filePath(configName, projectName)
+		if err != nil {
+			return err
+		}
+		_ = os.Remove(path)
+		return removeEmptyConfigDir(configName)
+	}
+
+	return Save(configName, projectName, filtered)
+}
+
+func removeEmptyConfigDir(configName string) error {
+	dir, err := Dir(configName)
+	if err != nil {
+		return err
+	}
+	dirEntries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	if len(dirEntries) == 0 {
+		return os.Remove(dir)
+	}
+	return nil
 }

@@ -30,7 +30,7 @@ func execWithPTY(cmd *exec.Cmd, buffered bool) (output string, err error) {
 	if err != nil {
 		return "", fmt.Errorf("pty open: %w", err)
 	}
-	defer ptmx.Close()
+	defer func() { _ = ptmx.Close() }()
 
 	if sz, err := pty.GetsizeFull(os.Stdout); err == nil {
 		_ = pty.Setsize(ptmx, sz)
@@ -41,10 +41,10 @@ func execWithPTY(cmd *exec.Cmd, buffered bool) (output string, err error) {
 	cmd.Stderr = tty
 
 	if err := cmd.Start(); err != nil {
-		tty.Close()
+		_ = tty.Close()
 		return "", fmt.Errorf("start: %w", err)
 	}
-	tty.Close()
+	_ = tty.Close()
 
 	if buffered {
 		var buf bytes.Buffer

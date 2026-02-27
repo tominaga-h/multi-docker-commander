@@ -18,3 +18,10 @@ test-all:
 test-cover:
 	go test ./... -v -coverprofile=coverage.out
 	go tool cover -func=coverage.out
+
+lint:
+	go vet ./...
+	golangci-lint run
+
+check:
+	make lint && make test-all
