@@ -25,3 +25,7 @@ lint:
 
 check:
 	make lint && make test-all
+
+install-hooks:
+	chmod +x githooks/pre-push.sh
+	cp githooks/pre-push.sh .git/hooks/pre-push
