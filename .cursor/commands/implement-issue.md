@@ -4,7 +4,7 @@
 
 ## 手順
 
-1. `gh issue view N -R tominaga-h/multi-docker-compose` を実行し、Issue の内容を取得する
+1. `gh issue view N -R tominaga-h/multi-docker-commander` を実行し、Issue の内容を取得する
 2. 該当する Issue が見つからない場合、ユーザーに「指定された番号の Issue が見つかりません」と伝え、処理を停止する
 3. 既にクローズ済みの場合、ユーザーに「既にクローズ済みです。再実装しますか？」と確認する
 4. Issue の内容を理解し、`docs/OVERVIEW.md` を読み込んでプロジェクト全体の構成を把握する
@@ -24,4 +24,4 @@
 
 ユーザー入力: `/implement-issue 13`
 
-→ `gh issue view 13 -R tominaga-h/multi-docker-compose` で Issue 内容を取得し、プランモードで実装計画を提示、承認後に実装、完了後に Issue をクローズする。
+→ `gh issue view 13 -R tominaga-h/multi-docker-commander` で Issue 内容を取得し、プランモードで実装計画を提示、承認後に実装、完了後に Issue をクローズする。

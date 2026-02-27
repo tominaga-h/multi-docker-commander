@@ -1,7 +1,7 @@
-# multi-docker-compose (mdc)
+# multi-docker-commander (mdc)
 
-[![build](https://img.shields.io/github/actions/workflow/status/tominaga-h/multi-docker-compose/ci.yml?branch=develop)](https://github.com/tominaga-h/multi-docker-compose/actions/workflows/ci.yml)
-[![version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/tominaga-h/multi-docker-compose/releases/tag/v0.2.0)
+[![build](https://img.shields.io/github/actions/workflow/status/tominaga-h/multi-docker-commander/ci.yml?branch=develop)](https://github.com/tominaga-h/multi-docker-commander/actions/workflows/ci.yml)
+[![version](https://img.shields.io/badge/version-0.2.1-blue)](https://github.com/tominaga-h/multi-docker-commander/releases/tag/v0.2.1)
 
 **複数リポジトリにまたがる** Docker 環境の起動・停止を、**1つのコマンドで一括管理・実行** するための CLI ツール。
 
@@ -19,10 +19,10 @@
 
 ### GitHub Releases からダウンロード
 
-[最新リリース](https://github.com/tominaga-h/multi-docker-compose/releases/latest)からビルド済みバイナリをダウンロードできます。
+[最新リリース](https://github.com/tominaga-h/multi-docker-commander/releases/latest)からビルド済みバイナリをダウンロードできます。
 
 ```bash
-curl -L -o mdc https://github.com/tominaga-h/multi-docker-compose/releases/download/v0.2.0/mdc
+curl -L -o mdc https://github.com/tominaga-h/multi-docker-commander/releases/download/v0.2.1/mdc
 chmod +x mdc
 sudo mv mdc /usr/local/bin/
 ```
@@ -30,8 +30,8 @@ sudo mv mdc /usr/local/bin/
 ### ソースからビルド
 
 ```bash
-git clone https://github.com/tominaga-h/multi-docker-compose.git
-cd multi-docker-compose
+git clone https://github.com/tominaga-h/multi-docker-commander.git
+cd multi-docker-commander
 make build
 ```
 

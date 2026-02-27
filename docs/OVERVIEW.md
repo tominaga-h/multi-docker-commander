@@ -1,4 +1,4 @@
-# 要件定義書: MDC (Multi-Docker-Compose)
+# 要件定義書: MDC (Multi-Docker-Commander)
 
 ## 1. 概要
 

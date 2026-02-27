@@ -5,6 +5,16 @@
 フォーマットは [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に準拠し、
 バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
 
+## [0.2.1] - 2026-02-28
+
+### Added
+
+- リリース手順を自動化する Cursor Command (`/release`) を追加
+
+### Changed
+
+- プロジェクト名を Multi-Docker-Commander に変更（バクロニム）
+
 ## [0.2.0] - 2026-02-28
 
 ### Added
