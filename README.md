@@ -1,5 +1,8 @@
 # MDC (Multi-Docker-Compose)
 
+[![build](https://img.shields.io/github/actions/workflow/status/tominaga-h/multi-docker-compose/ci.yml?branch=main)](https://github.com/tominaga-h/multi-docker-compose/actions/workflows/ci.yml)
+[![version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/tominaga-h/multi-docker-compose/releases/tag/v0.1.0)
+
 複数リポジトリにまたがる Docker 環境の起動・停止を、1つのコマンドで一括管理・実行するための CLI ツール。
 
 ## 特徴
