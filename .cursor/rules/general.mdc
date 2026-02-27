@@ -5,4 +5,4 @@ alwaysApply: true
 # General Rules
 
 - かならず最初に `docs/OVERVIEW.md` を読み込むこと
-- 実装が終わったらかならず `make build` を実行すること
+- テストする際は、リント修正も含めた `make check` コマンドを実行してください

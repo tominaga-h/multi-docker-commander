@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"mdc/internal/config"
+
 	"github.com/jedib0t/go-pretty/v6/text"
 )
 
@@ -260,6 +262,84 @@ func TestProjectColorConsistency(t *testing.T) {
 	second := prefix("my-app")
 	if first != second {
 		t.Errorf("same project should get same color, got %q and %q", first, second)
+	}
+}
+
+func TestDryRunHeader(t *testing.T) {
+	out := captureOutput(t, func() {
+		DryRunHeader("up", "sequential")
+	})
+	plain := stripANSI(out)
+	if !strings.Contains(plain, "Dry-run: up") {
+		t.Errorf("output missing action: %q", plain)
+	}
+	if !strings.Contains(plain, "sequential") {
+		t.Errorf("output missing mode: %q", plain)
+	}
+	if !strings.Contains(out, "📋") {
+		t.Errorf("output missing emoji: %q", out)
+	}
+	if !strings.Contains(plain, "━") {
+		t.Errorf("output missing separator: %q", plain)
+	}
+}
+
+func TestDryRunProject(t *testing.T) {
+	t.Run("without warning", func(t *testing.T) {
+		cmds := []config.CommandItem{
+			{Command: "make up"},
+			{Command: "sleep 60", Background: true},
+		}
+		out := captureOutput(t, func() {
+			DryRunProject("api", "/path/to/api", cmds, "")
+		})
+		plain := stripANSI(out)
+		if !strings.Contains(plain, "[api]") {
+			t.Errorf("output missing project name: %q", plain)
+		}
+		if !strings.Contains(plain, "/path/to/api") {
+			t.Errorf("output missing path: %q", plain)
+		}
+		if !strings.Contains(plain, "1. make up") {
+			t.Errorf("output missing numbered command: %q", plain)
+		}
+		if !strings.Contains(plain, "2. sleep 60 [background]") {
+			t.Errorf("output missing background label: %q", plain)
+		}
+		if strings.Contains(plain, "Not Found") {
+			t.Errorf("output should not contain warning: %q", plain)
+		}
+	})
+
+	t.Run("with warning", func(t *testing.T) {
+		cmds := []config.CommandItem{{Command: "echo hi"}}
+		out := captureOutput(t, func() {
+			DryRunProject("bad", "/no/such/path", cmds, "⚠️ Not Found")
+		})
+		plain := stripANSI(out)
+		if !strings.Contains(plain, "Not Found") {
+			t.Errorf("output missing warning: %q", plain)
+		}
+	})
+}
+
+func TestDryRunStopEntry(t *testing.T) {
+	out := captureOutput(t, func() {
+		DryRunStopHeader()
+		DryRunStopEntry("api", "make run", 9999)
+	})
+	plain := stripANSI(out)
+	if !strings.Contains(out, "🛑") {
+		t.Errorf("output missing stop emoji: %q", out)
+	}
+	if !strings.Contains(plain, "[api]") {
+		t.Errorf("output missing project name: %q", plain)
+	}
+	if !strings.Contains(plain, "make run") {
+		t.Errorf("output missing command: %q", plain)
+	}
+	if !strings.Contains(plain, "PID: 9999") {
+		t.Errorf("output missing PID: %q", plain)
 	}
 }
 

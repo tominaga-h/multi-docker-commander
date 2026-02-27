@@ -1,8 +1,11 @@
 package runner
 
 import (
+	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -10,6 +13,12 @@ import (
 	"mdc/internal/logger"
 	"mdc/internal/pidfile"
 )
+
+var ansiRe = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+func stripANSI(s string) string {
+	return ansiRe.ReplaceAllString(s, "")
+}
 
 func init() {
 	logger.SetOutput(os.Stderr)
@@ -342,8 +351,228 @@ func TestRunBackgroundCommand(t *testing.T) {
 
 	// Clean up
 	if p, err := os.FindProcess(entries[0].PID); err == nil {
-		p.Kill()
-		p.Wait()
+		_ = p.Kill()
+		_, _ = p.Wait()
+	}
+}
+
+func TestStartBackgroundProcessWithLogFile(t *testing.T) {
+	dir := t.TempDir()
+	logFile := filepath.Join(dir, "test.log")
+
+	pid, err := StartBackgroundProcess("echo hello-from-bg", dir, logFile)
+	if err != nil {
+		t.Fatalf("StartBackgroundProcess() error: %v", err)
+	}
+	if pid <= 0 {
+		t.Fatalf("PID = %d, want > 0", pid)
+	}
+
+	if p, err := os.FindProcess(pid); err == nil {
+		_, _ = p.Wait()
+	}
+
+	data, err := os.ReadFile(logFile)
+	if err != nil {
+		t.Fatalf("failed to read log file: %v", err)
+	}
+	if !strings.Contains(string(data), "hello-from-bg") {
+		t.Errorf("log file content = %q, want containing 'hello-from-bg'", string(data))
+	}
+}
+
+func TestStartBackgroundProcessLogFileExistsOnReturn(t *testing.T) {
+	dir := t.TempDir()
+	logFile := filepath.Join(dir, "wait.log")
+
+	pid, err := StartBackgroundProcess("sleep 60", dir, logFile)
+	if err != nil {
+		t.Fatalf("StartBackgroundProcess() error: %v", err)
+	}
+	defer func() {
+		if p, err := os.FindProcess(pid); err == nil {
+			_ = p.Kill()
+			_, _ = p.Wait()
+		}
+	}()
+
+	if _, err := os.Stat(logFile); err != nil {
+		t.Errorf("log file should exist immediately after StartBackgroundProcess returns: %v", err)
+	}
+}
+
+func TestStartBackgroundProcessLogFileRenamable(t *testing.T) {
+	dir := t.TempDir()
+	logFile := filepath.Join(dir, "_pending.log")
+
+	pid, err := StartBackgroundProcess("sleep 60", dir, logFile)
+	if err != nil {
+		t.Fatalf("StartBackgroundProcess() error: %v", err)
+	}
+	defer func() {
+		if p, err := os.FindProcess(pid); err == nil {
+			_ = p.Kill()
+			_, _ = p.Wait()
+		}
+	}()
+
+	renamed, err := pidfile.RenameProcLog(logFile, pid)
+	if err != nil {
+		t.Fatalf("RenameProcLog() should succeed after waitForFile: %v", err)
+	}
+	expected := filepath.Join(dir, fmt.Sprintf("%d.log", pid))
+	if renamed != expected {
+		t.Errorf("RenameProcLog() = %q, want %q", renamed, expected)
+	}
+}
+
+func TestStartBackgroundProcessPreservesANSI(t *testing.T) {
+	dir := t.TempDir()
+	logFile := filepath.Join(dir, "color.log")
+
+	// printf with ANSI escape: red "COLOR" reset
+	cmd := `printf '\033[31mCOLOR\033[0m\n'`
+	pid, err := StartBackgroundProcess(cmd, dir, logFile)
+	if err != nil {
+		t.Fatalf("StartBackgroundProcess() error: %v", err)
+	}
+
+	if p, err := os.FindProcess(pid); err == nil {
+		_, _ = p.Wait()
+	}
+
+	data, err := os.ReadFile(logFile)
+	if err != nil {
+		t.Fatalf("failed to read log file: %v", err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "COLOR") {
+		t.Fatalf("log should contain 'COLOR', got %q", content)
+	}
+	if !strings.Contains(content, "\033[31m") && !strings.Contains(content, "\x1b[31m") {
+		t.Errorf("log should contain ANSI escape codes for color, got %q", content)
+	}
+}
+
+func TestDryRun(t *testing.T) {
+	dir := t.TempDir()
+	var buf bytes.Buffer
+	logger.SetOutput(&buf)
+	logger.ResetColors()
+	t.Cleanup(func() {
+		logger.SetOutput(os.Stderr)
+		logger.ResetColors()
+	})
+
+	cfg := &config.Config{
+		ExecutionMode: "sequential",
+		Projects: []config.Project{
+			{
+				Name: "svc-a",
+				Path: dir,
+				Commands: config.Commands{
+					Up: []config.CommandItem{
+						{Command: "echo hello"},
+						{Command: "sleep 60", Background: true},
+					},
+				},
+			},
+		},
+	}
+
+	if err := DryRun(cfg, "up"); err != nil {
+		t.Fatalf("DryRun() error: %v", err)
+	}
+
+	out := stripANSI(buf.String())
+	if !strings.Contains(out, "Dry-run: up") {
+		t.Errorf("output missing header: %q", out)
+	}
+	if !strings.Contains(out, "sequential") {
+		t.Errorf("output missing execution mode: %q", out)
+	}
+	if !strings.Contains(out, "svc-a") {
+		t.Errorf("output missing project name: %q", out)
+	}
+	if !strings.Contains(out, dir) {
+		t.Errorf("output missing project path: %q", out)
+	}
+	if !strings.Contains(out, "echo hello") {
+		t.Errorf("output missing command: %q", out)
+	}
+	if !strings.Contains(out, "[background]") {
+		t.Errorf("output missing background label: %q", out)
+	}
+
+	// Verify no files were created (commands were not executed)
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 0 {
+		t.Errorf("dry-run should not execute commands, but found files in %s", dir)
+	}
+}
+
+func TestDryRunInvalidPath(t *testing.T) {
+	var buf bytes.Buffer
+	logger.SetOutput(&buf)
+	logger.ResetColors()
+	t.Cleanup(func() {
+		logger.SetOutput(os.Stderr)
+		logger.ResetColors()
+	})
+
+	cfg := &config.Config{
+		ExecutionMode: "parallel",
+		Projects: []config.Project{
+			{
+				Name: "good",
+				Path: t.TempDir(),
+				Commands: config.Commands{
+					Up: []config.CommandItem{{Command: "echo ok"}},
+				},
+			},
+			{
+				Name: "bad",
+				Path: "/nonexistent/path/xyz",
+				Commands: config.Commands{
+					Up: []config.CommandItem{{Command: "echo fail"}},
+				},
+			},
+		},
+	}
+
+	err := DryRun(cfg, "up")
+	if err == nil {
+		t.Fatal("expected error for invalid path, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid paths") {
+		t.Errorf("error = %q, want containing 'invalid paths'", err.Error())
+	}
+
+	out := stripANSI(buf.String())
+	if !strings.Contains(out, "good") {
+		t.Error("output should include the valid project even when another path is invalid")
+	}
+	if !strings.Contains(out, "bad") {
+		t.Error("output should include the invalid project with warning")
+	}
+	if !strings.Contains(out, "Not Found") {
+		t.Errorf("output missing path warning: %q", out)
+	}
+}
+
+func TestStartBackgroundProcessWithoutLogFile(t *testing.T) {
+	dir := t.TempDir()
+
+	pid, err := StartBackgroundProcess("echo no-log", dir, "")
+	if err != nil {
+		t.Fatalf("StartBackgroundProcess() error: %v", err)
+	}
+	if pid <= 0 {
+		t.Fatalf("PID = %d, want > 0", pid)
+	}
+
+	if p, err := os.FindProcess(pid); err == nil {
+		_, _ = p.Wait()
 	}
 }
 
@@ -392,7 +621,7 @@ func TestRunMixedForegroundAndBackground(t *testing.T) {
 
 	// Clean up
 	if p, err := os.FindProcess(entries[0].PID); err == nil {
-		p.Kill()
-		p.Wait()
+		_ = p.Kill()
+		_, _ = p.Wait()
 	}
 }

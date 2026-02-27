@@ -32,11 +32,18 @@ func Execute() {
 	}
 }
 
-func loadAndRun(configName, action string) {
+func loadAndRun(configName, action string, dryRun bool) {
 	cfg, err := config.Load(configName)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
+	}
+	if dryRun {
+		if err := runner.DryRun(cfg, action); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
 	}
 	if err := runner.Run(cfg, action, configName); err != nil {
 		fmt.Fprintln(os.Stderr, err)

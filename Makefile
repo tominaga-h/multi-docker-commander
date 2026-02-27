@@ -6,6 +6,9 @@ build:
 build-v:
 	go build -ldflags "-X mdc/internal/version.Version=$(VERSION)" -o mdc .
 
+build-local:
+	make check && make build-v && ./mdc -v
+
 test:
 	go test ./internal/... -v
 
@@ -18,3 +21,14 @@ test-all:
 test-cover:
 	go test ./... -v -coverprofile=coverage.out
 	go tool cover -func=coverage.out
+
+lint:
+	go vet ./...
+	golangci-lint run
+
+check:
+	make lint && make test-all
+
+install-hooks:
+	chmod +x githooks/pre-push.sh
+	cp githooks/pre-push.sh .git/hooks/pre-push

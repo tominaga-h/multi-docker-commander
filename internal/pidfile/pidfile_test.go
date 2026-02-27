@@ -201,3 +201,121 @@ func TestDir(t *testing.T) {
 		t.Errorf("Dir() base = %q, want %q", filepath.Base(dir), "myconfig")
 	}
 }
+
+func TestProcLogDir(t *testing.T) {
+	cleanup := withTempBaseDir(t)
+	defer cleanup()
+
+	dir, err := ProcLogDir("myconfig")
+	if err != nil {
+		t.Fatalf("ProcLogDir() error: %v", err)
+	}
+	if filepath.Base(dir) != "myconfig" {
+		t.Errorf("ProcLogDir() base = %q, want %q", filepath.Base(dir), "myconfig")
+	}
+	parent := filepath.Base(filepath.Dir(dir))
+	if parent != "proc" {
+		t.Errorf("ProcLogDir() parent = %q, want %q", parent, "proc")
+	}
+}
+
+func TestProcLogFilePath(t *testing.T) {
+	cleanup := withTempBaseDir(t)
+	defer cleanup()
+
+	path, err := ProcLogFilePath("cfg", "proj", 12345)
+	if err != nil {
+		t.Fatalf("ProcLogFilePath() error: %v", err)
+	}
+	if filepath.Base(path) != "12345.log" {
+		t.Errorf("ProcLogFilePath() base = %q, want %q", filepath.Base(path), "12345.log")
+	}
+	if filepath.Base(filepath.Dir(path)) != "proj" {
+		t.Errorf("ProcLogFilePath() project dir = %q, want %q", filepath.Base(filepath.Dir(path)), "proj")
+	}
+}
+
+func TestProcLogTmpPath(t *testing.T) {
+	cleanup := withTempBaseDir(t)
+	defer cleanup()
+
+	path, err := ProcLogTmpPath("cfg", "proj")
+	if err != nil {
+		t.Fatalf("ProcLogTmpPath() error: %v", err)
+	}
+	if filepath.Base(path) != "_pending.log" {
+		t.Errorf("ProcLogTmpPath() base = %q, want %q", filepath.Base(path), "_pending.log")
+	}
+}
+
+func TestRenameProcLog(t *testing.T) {
+	dir := t.TempDir()
+	tmpPath := filepath.Join(dir, "_pending.log")
+	if err := os.WriteFile(tmpPath, []byte("test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := RenameProcLog(tmpPath, 42)
+	if err != nil {
+		t.Fatalf("RenameProcLog() unexpected error: %v", err)
+	}
+	expected := filepath.Join(dir, "42.log")
+	if result != expected {
+		t.Errorf("RenameProcLog() = %q, want %q", result, expected)
+	}
+	if _, err := os.Stat(expected); err != nil {
+		t.Errorf("renamed file should exist: %v", err)
+	}
+}
+
+func TestRenameProcLogEmpty(t *testing.T) {
+	result, err := RenameProcLog("", 42)
+	if err != nil {
+		t.Fatalf("RenameProcLog(\"\") unexpected error: %v", err)
+	}
+	if result != "" {
+		t.Errorf("RenameProcLog(\"\") = %q, want empty", result)
+	}
+}
+
+func TestRenameProcLogNonexistent(t *testing.T) {
+	dir := t.TempDir()
+	tmpPath := filepath.Join(dir, "_pending.log")
+
+	result, err := RenameProcLog(tmpPath, 42)
+	if err == nil {
+		t.Fatal("RenameProcLog() expected error for nonexistent file, got nil")
+	}
+	if result != "" {
+		t.Errorf("RenameProcLog() = %q, want empty on error", result)
+	}
+}
+
+func TestKillAllCleansUpLogs(t *testing.T) {
+	cleanup := withTempBaseDir(t)
+	defer cleanup()
+
+	if err := Save("cfg", "proj", []Entry{{PID: 999999999, Command: "fake"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	logDir, err := ProcLogDir("cfg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	projLogDir := filepath.Join(logDir, "proj")
+	if err := os.MkdirAll(projLogDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projLogDir, "999999999.log"), []byte("log"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := KillAll("cfg"); err != nil {
+		t.Fatalf("KillAll() error: %v", err)
+	}
+
+	if _, err := os.Stat(logDir); !os.IsNotExist(err) {
+		t.Errorf("log directory should be removed after KillAll, err = %v", err)
+	}
+}

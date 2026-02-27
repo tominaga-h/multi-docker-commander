@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"mdc/internal/config"
+
 	"github.com/jedib0t/go-pretty/v6/text"
 	"golang.org/x/term"
 )
@@ -97,7 +99,7 @@ func outputBorder() string {
 func writef(format string, args ...any) {
 	mu.Lock()
 	defer mu.Unlock()
-	fmt.Fprintf(out, format, args...)
+	_, _ = fmt.Fprintf(out, format, args...)
 }
 
 func Border() {
@@ -124,12 +126,62 @@ func Stop(projectName, cmd string, pid int) {
 	writef("🛑 [%s] Stopping: %s (PID: %s)\n", prefix(projectName), colorCmd(cmd), colorPID(pid))
 }
 
+func Stopped(projectName string) {
+	writef("✅ [%s] Stopped successfully\n", prefix(projectName))
+}
+
 func ProjectDone(projectName string) {
 	writef("✅ [%s] All commands completed\n", prefix(projectName))
 }
 
 func ProjectFailed(projectName string, err error) {
 	writef("❌ [%s] Aborted — %s\n", prefix(projectName), err)
+}
+
+func Attach(projectName, cmd string, pid int) {
+	writef("📎 [%s] Attached: %s (PID: %s)\n", prefix(projectName), colorCmd(cmd), colorPID(pid))
+}
+
+func Detach(projectName string) {
+	writef("📎 [%s] Detached\n", prefix(projectName))
+}
+
+func ProcessExited(projectName string, pid int) {
+	writef("💀 [%s] Process exited (PID: %s)\n", prefix(projectName), colorPID(pid))
+}
+
+func Warn(projectName, msg string) {
+	writef("⚠️  [%s] %s\n", prefix(projectName), msg)
+}
+
+func DryRunHeader(action, mode string) {
+	writef("📋 Dry-run: %s (mode: %s)\n", action, mode)
+	writef("%s\n\n", strings.Repeat("━", terminalWidth()))
+}
+
+func DryRunProject(projectName, path string, cmds []config.CommandItem, pathWarning string) {
+	writef("[%s]\n", prefix(projectName))
+	if pathWarning != "" {
+		writef("  📂 %s [%s]\n", path, pathWarning)
+	} else {
+		writef("  📂 %s\n", path)
+	}
+	for i, item := range cmds {
+		label := item.Command
+		if item.Background {
+			label += " [background]"
+		}
+		writef("    %d. %s\n", i+1, colorCmd(label))
+	}
+	writef("\n")
+}
+
+func DryRunStopEntry(projectName, command string, pid int) {
+	writef("  [%s] %s (PID: %s)\n", prefix(projectName), colorCmd(command), colorPID(pid))
+}
+
+func DryRunStopHeader() {
+	writef("🛑 Stopping background processes:\n")
 }
 
 func Output(projectName, output string) {
@@ -140,9 +192,9 @@ func Output(projectName, output string) {
 		return
 	}
 	border := outputBorder()
-	fmt.Fprintf(out, "   [%s] %s\n", prefix(projectName), border)
+	_, _ = fmt.Fprintf(out, "   [%s] %s\n", prefix(projectName), border)
 	for _, line := range strings.Split(trimmed, "\n") {
-		fmt.Fprintf(out, "   [%s] %s\n", prefix(projectName), line)
+		_, _ = fmt.Fprintf(out, "   [%s] %s\n", prefix(projectName), line)
 	}
-	fmt.Fprintf(out, "   [%s] %s\n", prefix(projectName), border)
+	_, _ = fmt.Fprintf(out, "   [%s] %s\n", prefix(projectName), border)
 }

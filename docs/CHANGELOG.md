@@ -5,6 +5,26 @@
 フォーマットは [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に準拠し、
 バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
 
+## [0.2.0] - 2026-02-28
+
+### Added
+
+- `--dry-run` オプションで実行計画を事前確認可能に (#9)
+- `mdc ps [config-name]` による Docker コンテナ状態の一覧表示 (#16)
+- `mdc proc attach <PID>` によるバックグラウンドプロセスのログストリーム (#14)
+- `mdc proc stop <PID>` / `mdc proc restart <PID>` によるバックグラウンドプロセスの停止・再起動 (#13)
+- GitHub Actions による自動テスト CI 環境 (#10)
+- pre-push フックによるコミット前チェック (#12)
+
+### Changed
+
+- golangci-lint をツールチェーンビルド方式に変更
+- README の全面的な見直し・更新 (#15)
+
+### Fixed
+
+- GitHub Actions の build バッヂが正しく表示されない問題を修正
+
 ## [0.1.0] - 2026-02-27
 
 ### Added
