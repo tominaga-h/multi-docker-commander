@@ -15,6 +15,8 @@
 - プロジェクト名プレフィックス付きのログ出力で視認性を確保
 - YAML ベースのシンプルな設定ファイル
 
+[![asciicast](../images/demo.gif)](https://asciinema.org/a/803734)
+
 ## インストール
 
 ### GitHub Releases からダウンロード

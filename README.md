@@ -17,6 +17,8 @@ While `docker-compose` has the `-d` option for background execution, mdc can als
 - Project name prefix in log output for better visibility
 - Simple YAML-based configuration files
 
+[![asciicast](images/demo.gif)](https://asciinema.org/a/803734)
+
 ## Installation
 
 ### Download from GitHub Releases
