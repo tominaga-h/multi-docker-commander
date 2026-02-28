@@ -3,23 +3,25 @@
 [![build](https://img.shields.io/github/actions/workflow/status/tominaga-h/multi-docker-commander/ci.yml?branch=develop)](https://github.com/tominaga-h/multi-docker-commander/actions/workflows/ci.yml)
 [![version](https://img.shields.io/badge/version-0.2.1-blue)](https://github.com/tominaga-h/multi-docker-commander/releases/tag/v0.2.1)
 
-**複数リポジトリにまたがる** Docker 環境の起動・停止を、**1つのコマンドで一括管理・実行** するための CLI ツール。
+[日本語版のREAMDEはこちら](../README.md)
 
-`docker-compose` はバックグラウンド実行できる `-d` オプションが存在するが、`npm run dev` のようなフォアグラウンドでサーバーを起動するコマンドでも **mdc上でバックグラウンド（デーモン）化できる** し、**プロセスの管理（終了・再起動・ログ出力）もできる** 柔軟さを備えている。
+A CLI tool for **managing and running** the start/stop of Docker environments **across multiple repositories** with a **single command**.
 
-## 特徴
+While `docker-compose` has the `-d` option for background execution, mdc can also **daemonize foreground commands** like `npm run dev` and provides the flexibility to **manage processes (stop, restart, view logs)**.
 
-- 複数リポジトリの Docker Compose を `mdc up` / `mdc down` で一括操作
-- プロジェクト間の並列 (`parallel`) / 直列 (`sequential`) 実行モードを選択可能
-- バックグラウンドプロセスの管理と状態確認 (`mdc proc`)
-- プロジェクト名プレフィックス付きのログ出力で視認性を確保
-- YAML ベースのシンプルな設定ファイル
+## Features
 
-## インストール
+- Batch operation of Docker Compose across multiple repositories with `mdc up` / `mdc down`
+- Selectable `parallel` / `sequential` execution modes between projects
+- Background process management and status monitoring (`mdc proc`)
+- Project name prefix in log output for better visibility
+- Simple YAML-based configuration files
 
-### GitHub Releases からダウンロード
+## Installation
 
-[最新リリース](https://github.com/tominaga-h/multi-docker-commander/releases/latest)からビルド済みバイナリをダウンロードできます。
+### Download from GitHub Releases
+
+You can download pre-built binaries from the [latest release](https://github.com/tominaga-h/multi-docker-commander/releases/latest).
 
 ```bash
 curl -L -o mdc https://github.com/tominaga-h/multi-docker-commander/releases/download/v0.2.1/mdc
@@ -27,7 +29,7 @@ chmod +x mdc
 sudo mv mdc /usr/local/bin/
 ```
 
-### ソースからビルド
+### Build from Source
 
 ```bash
 git clone https://github.com/tominaga-h/multi-docker-commander.git
@@ -35,27 +37,27 @@ cd multi-docker-commander
 make build
 ```
 
-`./mdc` バイナリが生成されます。パスの通った場所にコピーしてください。
+This generates the `./mdc` binary. Copy it to a directory in your PATH.
 
-### バージョン埋め込みビルド
+### Version-embedded Build
 
-Git タグからバージョン情報を埋め込む場合:
+To embed version information from Git tags:
 
 ```bash
 make build-v
 ```
 
-## クイックスタート
+## Quick Start
 
-### 1. 設定ディレクトリの作成
+### 1. Create the Configuration Directory
 
 ```bash
 mkdir -p ~/.config/mdc
 ```
 
-### 2. 設定ファイルの作成
+### 2. Create a Configuration File
 
-`~/.config/mdc/myproject.yml` を作成します:
+Create `~/.config/mdc/myproject.yml`:
 
 ```yaml
 execution_mode: "parallel"
@@ -79,23 +81,23 @@ projects:
         - command: "docker compose down"
 ```
 
-### 3. 起動と停止
+### 3. Start and Stop
 
 ```bash
-mdc up myproject      # 全プロジェクトを起動
-mdc down myproject    # 全プロジェクトを停止
+mdc up myproject      # Start all projects
+mdc down myproject    # Stop all projects
 ```
 
-拡張子 `.yml` は省略可能です。
+The `.yml` extension can be omitted.
 
-### 4. バックグラウンドプロセスの確認
+### 4. Check Background Processes
 
 ```bash
 mdc proc list
 mdc procs
 ```
 
-以下のようにテーブル形式でバックグラウンドプロセスの一覧を表示します。
+Displays a table of background processes:
 
 ```txt
 +--------------+------------+-------------+------------------------+-------+---------+
@@ -105,39 +107,39 @@ mdc procs
 +--------------+------------+-------------+------------------------+-------+---------+
 ```
 
-### 5. バックグラウンドプロセスの終了・再起動
+### 5. Stop / Restart Background Processes
 
 ```bash
 mdc proc stop <PID>
 mdc proc restart <PID>
 ```
 
-### 6. バックグラウンドプロセスのログ出力を確認
+### 6. View Background Process Logs
 
 ```bash
 mdc proc attach <PID>
 ```
 
-## 設定ファイル
+## Configuration
 
-設定ファイルは `~/.config/mdc/` に YAML 形式で配置します。
+Configuration files are placed in `~/.config/mdc/` in YAML format.
 
-### フィールド一覧
+### Field Reference
 
-| フィールド | 必須 | 説明 |
+| Field | Required | Description |
 |---|---|---|
-| `execution_mode` | Yes | `"parallel"` (並列) または `"sequential"` (直列) |
-| `projects` | Yes | プロジェクト定義のリスト (1つ以上) |
-| `projects[].name` | Yes | プロジェクト名 (ログ出力のプレフィックスに使用) |
-| `projects[].path` | Yes | プロジェクトのディレクトリパス (`~` 展開対応) |
-| `projects[].commands.up` | No | 起動時に実行するコマンドオブジェクトのリスト |
-| `projects[].commands.down` | No | 停止時に実行するコマンドオブジェクトのリスト |
-| `commands[][].command` | Yes | 実行するコマンド文字列 |
-| `commands[][].background` | No | `true` でバックグラウンド実行 (デフォルト: `false`) |
+| `execution_mode` | Yes | `"parallel"` or `"sequential"` |
+| `projects` | Yes | List of project definitions (one or more) |
+| `projects[].name` | Yes | Project name (used as log output prefix) |
+| `projects[].path` | Yes | Project directory path (`~` expansion supported) |
+| `projects[].commands.up` | No | List of command objects to run on start |
+| `projects[].commands.down` | No | List of command objects to run on stop |
+| `commands[][].command` | Yes | Command string to execute |
+| `commands[][].background` | No | Set to `true` for background execution (default: `false`) |
 
-### コマンドの記述形式
+### Command Format
 
-コマンドは `command` と `background` フィールドを持つオブジェクト形式で記述します:
+Commands are written as objects with `command` and `background` fields:
 
 ```yaml
 commands:
@@ -147,7 +149,7 @@ commands:
     - command: "echo done"
 ```
 
-`background` を省略するとフォアグラウンド実行（デフォルト）になります:
+Omitting `background` defaults to foreground execution:
 
 ```yaml
 commands:
@@ -155,7 +157,7 @@ commands:
     - command: "docker compose down"
 ```
 
-後方互換として、文字列での記述も引き続きサポートされています:
+For backward compatibility, plain string format is also supported:
 
 ```yaml
 commands:
@@ -163,16 +165,16 @@ commands:
     - "docker compose down"
 ```
 
-### 実行モード
+### Execution Modes
 
-- **parallel**: 全プロジェクトを Goroutine で同時に実行します。各プロジェクト内のコマンドは直列で実行されます。
-- **sequential**: プロジェクトを定義順に1つずつ処理します。
+- **parallel**: All projects run concurrently using Goroutines. Commands within each project are still executed sequentially.
+- **sequential**: Projects are processed one at a time in definition order.
 
-## コマンドリファレンス
+## Command Reference
 
 ### `mdc up [config-name]`
 
-指定した設定ファイルを読み込み、各プロジェクトの `commands.up` を実行します。
+Loads the specified configuration file and executes each project's `commands.up`.
 
 ```bash
 mdc up myproject
@@ -180,7 +182,7 @@ mdc up myproject
 
 ### `mdc down [config-name]`
 
-指定した設定ファイルを読み込み、各プロジェクトの `commands.down` を実行します。`mdc up` で起動したバックグラウンドプロセスも自動的に停止します。
+Loads the specified configuration file and executes each project's `commands.down`. Background processes started by `mdc up` are also automatically stopped.
 
 ```bash
 mdc down myproject
@@ -188,40 +190,40 @@ mdc down myproject
 
 ### `mdc list`
 
-`~/.config/mdc/` 内の設定ファイル一覧を表示します。エイリアスとして `mdc ls` も使用できます。
+Lists configuration files in `~/.config/mdc/`. Also available as `mdc ls`.
 
 ```bash
 mdc list
 mdc ls
 ```
 
-### `mdc proc` (エイリアス: `mdc procs`)
+### `mdc proc` (alias: `mdc procs`)
 
-バックグラウンドプロセスを管理します。サブコマンドを省略すると `proc list` として動作します。
+Manages background processes. When called without a subcommand, it behaves as `proc list`.
 
 #### `mdc proc list [config-name]`
 
-mdc が管理しているバックグラウンドプロセスの一覧を表示します。設定名を省略すると全設定のプロセスを表示します。
+Lists background processes managed by mdc. When config name is omitted, shows processes for all configurations.
 
 ```bash
-mdc proc list              # 全設定のプロセスを表示
-mdc proc list myproject    # 特定の設定のプロセスのみ表示
-mdc procs                  # エイリアス (proc list と同等)
+mdc proc list              # Show all processes
+mdc proc list myproject    # Show processes for a specific config
+mdc procs                  # Alias (equivalent to proc list)
 ```
 
 #### `mdc proc attach <PID>`
 
-バックグラウンドプロセスのログ出力をストリームします。Ctrl-C でデタッチできます（プロセスは継続）。
+Streams log output from a background process. Press Ctrl-C to detach (the process continues running).
 
 ```bash
 mdc proc attach 12345
-mdc proc attach 12345 --tail 50       # 末尾50行から表示
-mdc proc attach 12345 --no-follow     # 既存ログを出力して終了
+mdc proc attach 12345 --tail 50       # Start from the last 50 lines
+mdc proc attach 12345 --no-follow     # Print existing logs and exit
 ```
 
 #### `mdc proc stop <PID>`
 
-指定した PID のバックグラウンドプロセスを停止します。
+Stops the background process with the specified PID.
 
 ```bash
 mdc proc stop 12345
@@ -229,7 +231,7 @@ mdc proc stop 12345
 
 #### `mdc proc restart <PID>`
 
-指定した PID のバックグラウンドプロセスを再起動します。
+Restarts the background process with the specified PID.
 
 ```bash
 mdc proc restart 12345
@@ -237,36 +239,36 @@ mdc proc restart 12345
 
 ### `mdc --version`
 
-バージョン情報を表示します。
+Displays version information.
 
 ```bash
 mdc --version
 mdc -v
 ```
 
-## 開発
+## Development
 
-### 必要な環境
+### Requirements
 
 - Go 1.25+
 
-### ビルド
+### Build
 
 ```bash
 make build
 ```
 
-### テスト
+### Test
 
 ```bash
-make test             # internal パッケージのテスト
-make test-integration # 統合テスト
-make test-all         # 全テスト
-make test-cover       # カバレッジ付きテスト
+make test             # Internal package tests
+make test-integration # Integration tests
+make test-all         # All tests
+make test-cover       # Tests with coverage
 make lint             # go vet + golangci-lint
 make check            # lint + test-all
 ```
 
-## ライセンス
+## License
 
 TBD
