@@ -34,7 +34,7 @@
 
 以下の既存ドキュメント等に記載されたバージョンを、指定されたタグに変更する。
 
-- `README.md`
+- `README.md` および `docs/README_ja.md`
   - versionバッヂの値、リンク先のリリースURL（タグそのまま。例: `v0.2.0`）
   - curlコマンドのアセットURL（タグそのまま。例: `v0.2.0`）
 - `internal/version/version.go`
