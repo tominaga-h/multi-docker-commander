@@ -21,7 +21,7 @@ var initCmd = &cobra.Command{
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		fmt.Printf("Created %s\n", path)
+		fmt.Printf("Created %s\n", config.ContractHome(path))
 
 		if initEdit {
 			if err := openEditor(path); err != nil {

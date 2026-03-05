@@ -65,6 +65,54 @@ func TestExpandHome(t *testing.T) {
 	}
 }
 
+func TestContractHome(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("failed to get home dir: %v", err)
+	}
+
+	tests := []struct {
+		name string
+		path string
+		want string
+	}{
+		{
+			name: "home directory itself",
+			path: home,
+			want: "~",
+		},
+		{
+			name: "path under home",
+			path: filepath.Join(home, ".config", "mdc", "project.yml"),
+			want: filepath.Join("~", ".config", "mdc", "project.yml"),
+		},
+		{
+			name: "absolute path outside home",
+			path: "/usr/local/bin",
+			want: "/usr/local/bin",
+		},
+		{
+			name: "empty string unchanged",
+			path: "",
+			want: "",
+		},
+		{
+			name: "relative path unchanged",
+			path: "relative/path",
+			want: "relative/path",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ContractHome(tt.path)
+			if got != tt.want {
+				t.Errorf("ContractHome(%q) = %q, want %q", tt.path, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestValidate(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -593,6 +641,76 @@ func TestCreateConfig(t *testing.T) {
 		}
 		if !strings.Contains(content, "projects") {
 			t.Error("template should contain projects example")
+		}
+	})
+}
+
+func TestRemoveConfig(t *testing.T) {
+	t.Run("removes .yml file", func(t *testing.T) {
+		dir := t.TempDir()
+		target := filepath.Join(dir, "myproject.yml")
+		if err := os.WriteFile(target, []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		path, err := RemoveConfig(dir, "myproject")
+		if err != nil {
+			t.Fatalf("RemoveConfig() error: %v", err)
+		}
+		if path != target {
+			t.Errorf("path = %q, want %q", path, target)
+		}
+		if _, err := os.Stat(target); !os.IsNotExist(err) {
+			t.Errorf("file should have been removed: %s", target)
+		}
+	})
+
+	t.Run("removes .yaml file", func(t *testing.T) {
+		dir := t.TempDir()
+		target := filepath.Join(dir, "myproject.yaml")
+		if err := os.WriteFile(target, []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		path, err := RemoveConfig(dir, "myproject")
+		if err != nil {
+			t.Fatalf("RemoveConfig() error: %v", err)
+		}
+		if path != target {
+			t.Errorf("path = %q, want %q", path, target)
+		}
+		if _, err := os.Stat(target); !os.IsNotExist(err) {
+			t.Errorf("file should have been removed: %s", target)
+		}
+	})
+
+	t.Run("removes with explicit extension", func(t *testing.T) {
+		dir := t.TempDir()
+		target := filepath.Join(dir, "myproject.yml")
+		if err := os.WriteFile(target, []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		path, err := RemoveConfig(dir, "myproject.yml")
+		if err != nil {
+			t.Fatalf("RemoveConfig() error: %v", err)
+		}
+		if path != target {
+			t.Errorf("path = %q, want %q", path, target)
+		}
+		if _, err := os.Stat(target); !os.IsNotExist(err) {
+			t.Errorf("file should have been removed: %s", target)
+		}
+	})
+
+	t.Run("error for nonexistent file", func(t *testing.T) {
+		dir := t.TempDir()
+		_, err := RemoveConfig(dir, "nonexistent")
+		if err == nil {
+			t.Fatal("RemoveConfig() expected error, got nil")
+		}
+		if !strings.Contains(err.Error(), "config file not found") {
+			t.Errorf("error = %q, want containing 'config file not found'", err.Error())
 		}
 	})
 }

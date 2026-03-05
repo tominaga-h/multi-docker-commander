@@ -55,6 +55,21 @@ func ExpandHome(path string) (string, error) {
 	return filepath.Join(home, path[1:]), nil
 }
 
+func ContractHome(path string) string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+	if path == home {
+		return "~"
+	}
+	prefix := home + string(os.PathSeparator)
+	if strings.HasPrefix(path, prefix) {
+		return "~" + string(os.PathSeparator) + path[len(prefix):]
+	}
+	return path
+}
+
 func BaseMDCDir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -221,6 +236,25 @@ func CreateDefaultConfig(name string) (string, error) {
 		return "", err
 	}
 	return CreateConfig(configDir, name)
+}
+
+func RemoveConfig(configDir, name string) (string, error) {
+	path, err := resolveConfigPath(configDir, name)
+	if err != nil {
+		return "", err
+	}
+	if err := os.Remove(path); err != nil {
+		return "", fmt.Errorf("failed to remove config file %s: %w", path, err)
+	}
+	return path, nil
+}
+
+func RemoveDefaultConfig(name string) (string, error) {
+	configDir, err := DefaultConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return RemoveConfig(configDir, name)
 }
 
 func (c *Config) validate() error {
