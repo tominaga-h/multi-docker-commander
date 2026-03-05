@@ -29,7 +29,7 @@ var rmCmd = &cobra.Command{
 		displayPath := config.ContractHome(path)
 
 		if !rmForce {
-			fmt.Printf("Are you sure you want to remove %s? [y/n]: ", displayPath)
+			fmt.Printf("Are you sure you want to remove the file '%s'? [y/n]: ", displayPath)
 			reader := bufio.NewReader(os.Stdin)
 			answer, _ := reader.ReadString('\n')
 			answer = strings.TrimSpace(answer)
