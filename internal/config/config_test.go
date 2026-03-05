@@ -484,3 +484,115 @@ projects:
 		}
 	})
 }
+
+func TestCreateConfig(t *testing.T) {
+	t.Run("creates template without extension", func(t *testing.T) {
+		dir := t.TempDir()
+		path, err := CreateConfig(dir, "myproject")
+		if err != nil {
+			t.Fatalf("CreateConfig() error: %v", err)
+		}
+		want := filepath.Join(dir, "myproject.yml")
+		if path != want {
+			t.Errorf("path = %q, want %q", path, want)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("ReadFile() error: %v", err)
+		}
+		if string(data) != configTemplate {
+			t.Errorf("file content does not match template")
+		}
+	})
+
+	t.Run("strips .yml extension", func(t *testing.T) {
+		dir := t.TempDir()
+		path, err := CreateConfig(dir, "myproject.yml")
+		if err != nil {
+			t.Fatalf("CreateConfig() error: %v", err)
+		}
+		want := filepath.Join(dir, "myproject.yml")
+		if path != want {
+			t.Errorf("path = %q, want %q", path, want)
+		}
+	})
+
+	t.Run("strips .yaml extension and creates .yml", func(t *testing.T) {
+		dir := t.TempDir()
+		path, err := CreateConfig(dir, "myproject.yaml")
+		if err != nil {
+			t.Fatalf("CreateConfig() error: %v", err)
+		}
+		want := filepath.Join(dir, "myproject.yml")
+		if path != want {
+			t.Errorf("path = %q, want %q", path, want)
+		}
+	})
+
+	t.Run("error when .yml already exists", func(t *testing.T) {
+		dir := t.TempDir()
+		existing := filepath.Join(dir, "existing.yml")
+		if err := os.WriteFile(existing, []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		_, err := CreateConfig(dir, "existing")
+		if err == nil {
+			t.Fatal("CreateConfig() expected error, got nil")
+		}
+		if !strings.Contains(err.Error(), "already exists") {
+			t.Errorf("error = %q, want containing 'already exists'", err.Error())
+		}
+	})
+
+	t.Run("error when .yaml already exists", func(t *testing.T) {
+		dir := t.TempDir()
+		existing := filepath.Join(dir, "existing.yaml")
+		if err := os.WriteFile(existing, []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		_, err := CreateConfig(dir, "existing")
+		if err == nil {
+			t.Fatal("CreateConfig() expected error, got nil")
+		}
+		if !strings.Contains(err.Error(), "already exists") {
+			t.Errorf("error = %q, want containing 'already exists'", err.Error())
+		}
+	})
+
+	t.Run("creates directory if not exists", func(t *testing.T) {
+		dir := filepath.Join(t.TempDir(), "nested", "dir")
+		path, err := CreateConfig(dir, "newconfig")
+		if err != nil {
+			t.Fatalf("CreateConfig() error: %v", err)
+		}
+		want := filepath.Join(dir, "newconfig.yml")
+		if path != want {
+			t.Errorf("path = %q, want %q", path, want)
+		}
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			t.Errorf("file was not created at %s", path)
+		}
+	})
+
+	t.Run("template starts with comment header", func(t *testing.T) {
+		dir := t.TempDir()
+		path, err := CreateConfig(dir, "headercheck")
+		if err != nil {
+			t.Fatalf("CreateConfig() error: %v", err)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("ReadFile() error: %v", err)
+		}
+		content := string(data)
+		if !strings.HasPrefix(content, "# mdc") {
+			t.Errorf("template should start with comment header, got %q", content[:40])
+		}
+		if !strings.Contains(content, "execution_mode") {
+			t.Error("template should contain execution_mode example")
+		}
+		if !strings.Contains(content, "projects") {
+			t.Error("template should contain projects example")
+		}
+	})
+}
