@@ -207,6 +207,14 @@ func CreateConfig(configDir, name string) (string, error) {
 	return targetPath, nil
 }
 
+func ResolveConfigPath(name string) (string, error) {
+	configDir, err := DefaultConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return resolveConfigPath(configDir, name)
+}
+
 func CreateDefaultConfig(name string) (string, error) {
 	configDir, err := DefaultConfigDir()
 	if err != nil {

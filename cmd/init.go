@@ -9,6 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var initEdit bool
+
 var initCmd = &cobra.Command{
 	Use:   "init <config-name>",
 	Short: "Create a new YAML config template in ~/.config/mdc/",
@@ -20,9 +22,17 @@ var initCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		fmt.Printf("Created %s\n", path)
+
+		if initEdit {
+			if err := openEditor(path); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+		}
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(initCmd)
+	initCmd.Flags().BoolVarP(&initEdit, "edit", "e", false, "Open the created file in $EDITOR after creation")
 }

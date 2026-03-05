@@ -596,3 +596,64 @@ func TestCreateConfig(t *testing.T) {
 		}
 	})
 }
+
+func TestResolveConfigPath(t *testing.T) {
+	t.Run("resolves existing .yml file", func(t *testing.T) {
+		dir := t.TempDir()
+		want := filepath.Join(dir, "myproject.yml")
+		if err := os.WriteFile(want, []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		got, err := resolveConfigPath(dir, "myproject")
+		if err != nil {
+			t.Fatalf("resolveConfigPath() error: %v", err)
+		}
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("resolves existing .yaml file", func(t *testing.T) {
+		dir := t.TempDir()
+		want := filepath.Join(dir, "myproject.yaml")
+		if err := os.WriteFile(want, []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		got, err := resolveConfigPath(dir, "myproject")
+		if err != nil {
+			t.Fatalf("resolveConfigPath() error: %v", err)
+		}
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("returns error for missing file", func(t *testing.T) {
+		dir := t.TempDir()
+		_, err := resolveConfigPath(dir, "nonexistent")
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		if !strings.Contains(err.Error(), "config file not found") {
+			t.Errorf("error = %q, want containing 'config file not found'", err.Error())
+		}
+	})
+
+	t.Run("passes through explicit extension", func(t *testing.T) {
+		dir := t.TempDir()
+		want := filepath.Join(dir, "myproject.yml")
+		if err := os.WriteFile(want, []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		got, err := resolveConfigPath(dir, "myproject.yml")
+		if err != nil {
+			t.Fatalf("resolveConfigPath() error: %v", err)
+		}
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+}
