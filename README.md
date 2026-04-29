@@ -3,7 +3,7 @@
 [![build](https://img.shields.io/github/actions/workflow/status/tominaga-h/multi-docker-commander/ci.yml?branch=develop)](https://github.com/tominaga-h/multi-docker-commander/actions/workflows/ci.yml)
 [![version](https://img.shields.io/badge/version-2.0.2-blue)](https://github.com/tominaga-h/multi-docker-commander/releases/tag/v2.0.2)
 
-[日本語版のREAMDEはこちら](../README.md)
+[日本語版のREAMDEはこちら](docs/README_ja.md)
 
 A CLI tool for **managing and running** the start/stop of Docker environments **across multiple repositories** with a **single command**.
 
