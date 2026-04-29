@@ -62,4 +62,5 @@ Unit tests live next to the code in `internal/*/`. Integration tests live in `te
 - Per `.cursor/rules/general.mdc`: read `docs/OVERVIEW.md` first when starting work; run `make check` (lint + tests) before considering a change done.
 - Module path is `mdc` (see `go.mod`). Internal imports use `mdc/internal/...`.
 - Go 1.25+. Cobra for CLI, `gopkg.in/yaml.v3` for YAML.
-- Branching: `develop` is the working branch, `main` is release. Existing commits use both Japanese and English subjects — match the surrounding style of the file/area you're editing.
+- Branching: `develop` is the working branch, `main` is release.
+- **コミットメッセージは日本語で書くこと**。タイトル・本文ともに日本語が原則。型プレフィックス（`fix:` / `feat:` / `ci:` 等）は付けても付けなくてもよい（既存の履歴と揃える）。
