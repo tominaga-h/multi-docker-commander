@@ -1,7 +1,7 @@
 # multi-docker-commander (mdc)
 
 [![build](https://img.shields.io/github/actions/workflow/status/tominaga-h/multi-docker-commander/ci.yml?branch=develop)](https://github.com/tominaga-h/multi-docker-commander/actions/workflows/ci.yml)
-[![version](https://img.shields.io/badge/version-2.0.0-blue)](https://github.com/tominaga-h/multi-docker-commander/releases/tag/v2.0.0)
+[![version](https://img.shields.io/badge/version-2.0.2-blue)](https://github.com/tominaga-h/multi-docker-commander/releases/tag/v2.0.2)
 
 [日本語版のREAMDEはこちら](../README.md)
 
@@ -98,7 +98,7 @@ make build-v
 mdc init myproject
 ```
 
-This creates a template at `~/.config/mdc/myproject.yml`. To open it in your editor immediately:
+This creates a template at configulation directory. To open it in your editor immediately:
 
 ```bash
 mdc init myproject --edit
@@ -174,6 +174,16 @@ mdc proc attach <PID>
 ## Configuration
 
 Configuration files are placed in `~/.config/mdc/` in YAML format.
+
+The `~` portion is your OS user home directory, so the actual path differs per environment:
+
+| OS | Path |
+|---|---|
+| macOS | `/Users/<username>/.config/mdc/<name>.yml` |
+| Linux | `/home/<username>/.config/mdc/<name>.yml` |
+| Windows | `C:\Users\<username>\.config\mdc\<name>.yml` |
+
+(The directory layout is the same everywhere — only the user home prefix changes.)
 
 ### Field Reference
 

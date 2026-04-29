@@ -1,7 +1,7 @@
 # multi-docker-commander (mdc)
 
 [![build](https://img.shields.io/github/actions/workflow/status/tominaga-h/multi-docker-commander/ci.yml?branch=develop)](https://github.com/tominaga-h/multi-docker-commander/actions/workflows/ci.yml)
-[![version](https://img.shields.io/badge/version-2.0.0-blue)](https://github.com/tominaga-h/multi-docker-commander/releases/tag/v2.0.0)
+[![version](https://img.shields.io/badge/version-2.0.2-blue)](https://github.com/tominaga-h/multi-docker-commander/releases/tag/v2.0.2)
 
 **複数リポジトリにまたがる** Docker 環境の起動・停止を、**1つのコマンドで一括管理・実行** するための CLI ツール。
 
@@ -98,7 +98,7 @@ make build-v
 mdc init myproject
 ```
 
-`~/.config/mdc/myproject.yml` にテンプレートが生成されます。作成後すぐにエディタで開くこともできます:
+設定フォルダにテンプレートが生成されます。作成後すぐにエディタで開くこともできます:
 
 ```bash
 mdc init myproject --edit
@@ -174,6 +174,16 @@ mdc proc attach <PID>
 ## 設定ファイル
 
 設定ファイルは `~/.config/mdc/` に YAML 形式で配置します。
+
+`~` の部分は OS のユーザーホームディレクトリに展開されるため、実際のパスは環境ごとに異なります。
+
+| OS | 実パス |
+|---|---|
+| macOS | `/Users/<ユーザー名>/.config/mdc/<名前>.yml` |
+| Linux | `/home/<ユーザー名>/.config/mdc/<名前>.yml` |
+| Windows | `C:\Users\<ユーザー名>\.config\mdc\<名前>.yml` |
+
+（ディレクトリ構成自体はどの OS でも同じで、ホーム配下のプレフィックスだけが異なります。）
 
 ### フィールド一覧
 
