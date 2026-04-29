@@ -29,13 +29,48 @@ brew install tominaga-h/tap/mdc
 
 ### GitHub Releases からダウンロード
 
-[最新リリース](https://github.com/tominaga-h/multi-docker-commander/releases/latest)からビルド済みバイナリをダウンロードできます。
+[最新リリース](https://github.com/tominaga-h/multi-docker-commander/releases/latest)ページからビルド済みバイナリをダウンロードできます。
 
-```bash
-curl -L -o mdc https://github.com/tominaga-h/multi-docker-commander/releases/download/v2.0.0/mdc
-chmod +x mdc
-sudo mv mdc /usr/local/bin/
-```
+#### 対応プラットフォーム
+
+| OS | アーキテクチャ | アセット名 |
+|---|---|---|
+| macOS (Apple Silicon) | arm64 | `mdc-<version>-darwin-arm64` |
+| macOS (Intel) | amd64 | `mdc-<version>-darwin-amd64` |
+| Linux | amd64 | `mdc-<version>-linux-amd64` |
+| Linux | arm64 | `mdc-<version>-linux-arm64` |
+| Windows | amd64 | `mdc-<version>-windows-amd64.exe` |
+
+各バイナリにはチェックサム検証用の `.sha256` ファイルも同梱されています。
+
+#### インストール (macOS / Linux)
+
+1. リリースページから OS / アーキテクチャに合うバイナリ（例: `mdc-v2.0.2-darwin-arm64`）と対応する `.sha256` ファイルをダウンロードします。
+2. チェックサムを検証します:
+
+   ```bash
+   shasum -a 256 -c mdc-v2.0.2-darwin-arm64.sha256
+   ```
+
+3. 実行権限を付与して `PATH` の通ったディレクトリへ移動します:
+
+   ```bash
+   chmod +x mdc-v2.0.2-darwin-arm64
+   sudo mv mdc-v2.0.2-darwin-arm64 /usr/local/bin/mdc
+   ```
+
+**※ WSL(ubuntu)で使う場合も、Linuxバイナリをダウンロードしてください。**
+
+#### インストール (Windows)
+
+1. リリースページから `mdc-<version>-windows-amd64.exe` と対応する `.sha256` ファイルをダウンロードします。
+2. チェックサムを検証します:
+
+   ```powershell
+   Get-FileHash mdc-v2.0.2-windows-amd64.exe -Algorithm SHA256
+   ```
+
+3. ファイルを `mdc.exe` にリネームし、`PATH` の通ったディレクトリに配置します。
 
 ### ソースからビルド
 
