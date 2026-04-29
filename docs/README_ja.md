@@ -98,7 +98,7 @@ make build-v
 mdc init myproject
 ```
 
-`~/.config/mdc/myproject.yml` にテンプレートが生成されます。作成後すぐにエディタで開くこともできます:
+設定フォルダにテンプレートが生成されます。作成後すぐにエディタで開くこともできます:
 
 ```bash
 mdc init myproject --edit
@@ -174,6 +174,16 @@ mdc proc attach <PID>
 ## 設定ファイル
 
 設定ファイルは `~/.config/mdc/` に YAML 形式で配置します。
+
+`~` の部分は OS のユーザーホームディレクトリに展開されるため、実際のパスは環境ごとに異なります。
+
+| OS | 実パス |
+|---|---|
+| macOS | `/Users/<ユーザー名>/.config/mdc/<名前>.yml` |
+| Linux | `/home/<ユーザー名>/.config/mdc/<名前>.yml` |
+| Windows | `C:\Users\<ユーザー名>\.config\mdc\<名前>.yml` |
+
+（ディレクトリ構成自体はどの OS でも同じで、ホーム配下のプレフィックスだけが異なります。）
 
 ### フィールド一覧
 
