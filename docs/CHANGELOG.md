@@ -5,6 +5,38 @@
 フォーマットは [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に準拠し、
 バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
 
+## [2.0.3] - 2026-06-02
+
+### Fixed
+
+- `mdc down` がコマンド失敗で途中終了しても、追跡中のバックグラウンドプロセスのクリーンアップが必ず実行されるよう修正 (#177)
+
+### Added
+
+- `mdc proc kill --dead` オプションで、既に終了済みのプロセスの PID ファイルエントリのみを一括削除（実行中のプロセスは対象外）(#191)
+
+## [2.0.2] - 2026-04-29
+
+### Added
+
+- リリースワークフローに darwin/amd64 ビルドを追加
+- バイナリのダウンロード・インストール手順を README に追記
+
+### Changed
+
+- CLAUDE.md にコミットメッセージは日本語で書く規約を明記
+
+## [2.0.1] - 2026-04-29
+
+### Added
+
+- `mdc proc kill --all` オプションで追跡中の全バックグラウンドプロセスを一括終了
+- マルチプラットフォーム対応の自動リリースワークフロー (GitHub Actions) を追加
+
+### Changed
+
+- `mdc proc kill` のドキュメントを README に追記
+
 ## [2.0.0] - 2026-03-10
 
 ### Added

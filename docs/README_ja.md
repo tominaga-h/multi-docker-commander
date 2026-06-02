@@ -1,7 +1,7 @@
 # multi-docker-commander (mdc)
 
 [![build](https://img.shields.io/github/actions/workflow/status/tominaga-h/multi-docker-commander/ci.yml?branch=develop)](https://github.com/tominaga-h/multi-docker-commander/actions/workflows/ci.yml)
-[![version](https://img.shields.io/badge/version-2.0.2-blue)](https://github.com/tominaga-h/multi-docker-commander/releases/tag/v2.0.2)
+[![version](https://img.shields.io/badge/version-2.0.3-blue)](https://github.com/tominaga-h/multi-docker-commander/releases/tag/v2.0.3)
 
 **複数リポジトリにまたがる** Docker 環境の起動・停止を、**1つのコマンドで一括管理・実行** するための CLI ツール。
 
@@ -45,18 +45,18 @@ brew install tominaga-h/tap/mdc
 
 #### インストール (macOS / Linux)
 
-1. リリースページから OS / アーキテクチャに合うバイナリ（例: `mdc-v2.0.2-darwin-arm64`）と対応する `.sha256` ファイルをダウンロードします。
+1. リリースページから OS / アーキテクチャに合うバイナリ（例: `mdc-v2.0.3-darwin-arm64`）と対応する `.sha256` ファイルをダウンロードします。
 2. チェックサムを検証します:
 
    ```bash
-   shasum -a 256 -c mdc-v2.0.2-darwin-arm64.sha256
+   shasum -a 256 -c mdc-v2.0.3-darwin-arm64.sha256
    ```
 
 3. 実行権限を付与して `PATH` の通ったディレクトリへ移動します:
 
    ```bash
-   chmod +x mdc-v2.0.2-darwin-arm64
-   sudo mv mdc-v2.0.2-darwin-arm64 /usr/local/bin/mdc
+   chmod +x mdc-v2.0.3-darwin-arm64
+   sudo mv mdc-v2.0.3-darwin-arm64 /usr/local/bin/mdc
    ```
 
 **※ WSL(ubuntu)で使う場合も、Linuxバイナリをダウンロードしてください。**
@@ -67,7 +67,7 @@ brew install tominaga-h/tap/mdc
 2. チェックサムを検証します:
 
    ```powershell
-   Get-FileHash mdc-v2.0.2-windows-amd64.exe -Algorithm SHA256
+   Get-FileHash mdc-v2.0.3-windows-amd64.exe -Algorithm SHA256
    ```
 
 3. ファイルを `mdc.exe` にリネームし、`PATH` の通ったディレクトリに配置します。
@@ -347,12 +347,16 @@ mdc proc restart 12345
 
 設定名・PID・全設定を指定してバックグラウンドプロセスを終了します。`-c` で指定した設定に属する全プロセスを一括終了、`-p` で単一プロセスを終了、`--all` で mdc が追跡する全設定のプロセスを一括終了できます。
 
+`--dead` を指定すると、すでに動作していない（Status が Dead の）追跡エントリのみを掃除します。稼働中のプロセスへは一切 kill シグナルを送りません。`-c` と併用すれば単一設定、単独または `--all` 併用で全設定を対象にできます。`--dead` は `-p` とは併用できません。
+
 YAML の `commands.down` に `mdc proc kill` と記述すると、runner が自動的に `-c <設定名>` を付与して実行します。
 
 ```bash
 mdc proc kill -c myproject    # 指定した設定の全プロセスを終了
 mdc proc kill -p 12345        # 指定した PID のプロセスを終了
 mdc proc kill --all           # 全設定の管理対象プロセスを終了
+mdc proc kill --dead          # 全設定の Dead エントリを掃除
+mdc proc kill --dead -c myproject  # 指定した設定の Dead エントリを掃除
 ```
 
 | オプション | 説明 |
@@ -360,6 +364,7 @@ mdc proc kill --all           # 全設定の管理対象プロセスを終了
 | `-c`, `--config` | 全プロセスを終了する設定名 |
 | `-p`, `--pid` | 終了するプロセスの PID |
 | `--all` | 全設定の管理対象プロセスを一括終了 |
+| `--dead` | 動作していない追跡エントリのみを掃除（稼働中プロセスは kill しない。`-c` と併用可） |
 
 ### `mdc --version`
 

@@ -130,6 +130,16 @@ func Stopped(projectName string) {
 	writef("✅ [%s] Stopped successfully\n", prefix(projectName))
 }
 
+// DeadCleaned reports how many dead (no-longer-running) tracked entries
+// were removed.
+func DeadCleaned(removed int) {
+	if removed == 0 {
+		writef("✅ No dead processes to clean up\n")
+		return
+	}
+	writef("✅ Cleaned up %d dead process(es)\n", removed)
+}
+
 func ProjectDone(projectName string) {
 	writef("✅ [%s] All commands completed\n", prefix(projectName))
 }

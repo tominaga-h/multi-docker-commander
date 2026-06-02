@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
 )
 
@@ -11,7 +14,10 @@ var upCmd = &cobra.Command{
 	Short: "Start all projects defined in a config",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		loadAndRun(args[0], "up", upDryRun)
+		if err := loadAndRun(args[0], "up", upDryRun); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	},
 }
 

@@ -32,21 +32,17 @@ func Execute() {
 	}
 }
 
-func loadAndRun(configName, action string, dryRun bool) {
+// loadAndRun loads the config and dispatches to the runner.
+// It returns any error encountered instead of exiting, so callers
+// (e.g. down) can perform cleanup even when the run fails. Callers are
+// responsible for printing the error and exiting.
+func loadAndRun(configName, action string, dryRun bool) error {
 	cfg, err := config.Load(configName)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return err
 	}
 	if dryRun {
-		if err := runner.DryRun(cfg, action); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		return
+		return runner.DryRun(cfg, action)
 	}
-	if err := runner.Run(cfg, action, configName); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	return runner.Run(cfg, action, configName)
 }
