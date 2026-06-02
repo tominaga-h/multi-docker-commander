@@ -347,12 +347,16 @@ mdc proc restart 12345
 
 Kills background processes by config name, PID, or all configs. Use `-c` to kill all processes belonging to a config, `-p` to kill a single process by PID, or `--all` to kill all tracked processes.
 
+Use `--dead` to remove tracked entries whose process is no longer running (Status: Dead) without killing any live process. It can be combined with `-c` to clean a single config, or used alone / with `--all` to clean every config. `--dead` cannot be combined with `-p`.
+
 When `mdc proc kill` is used in YAML `commands.down`, the runner automatically appends `-c <config-name>`.
 
 ```bash
 mdc proc kill -c myproject    # Kill all processes for a config
 mdc proc kill -p 12345        # Kill a single process by PID
 mdc proc kill --all           # Kill all tracked processes across all configs
+mdc proc kill --dead          # Remove dead entries across all configs
+mdc proc kill --dead -c myproject  # Remove dead entries for one config
 ```
 
 | Option | Description |
@@ -360,6 +364,7 @@ mdc proc kill --all           # Kill all tracked processes across all configs
 | `-c`, `--config` | Config name to kill all processes for |
 | `-p`, `--pid` | PID of the process to kill |
 | `--all` | Kill all tracked processes across all configs |
+| `--dead` | Remove tracked entries whose process is no longer running (does not kill live processes; combinable with `-c`) |
 
 ### `mdc --version`
 

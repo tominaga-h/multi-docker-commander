@@ -347,12 +347,16 @@ mdc proc restart 12345
 
 設定名・PID・全設定を指定してバックグラウンドプロセスを終了します。`-c` で指定した設定に属する全プロセスを一括終了、`-p` で単一プロセスを終了、`--all` で mdc が追跡する全設定のプロセスを一括終了できます。
 
+`--dead` を指定すると、すでに動作していない（Status が Dead の）追跡エントリのみを掃除します。稼働中のプロセスへは一切 kill シグナルを送りません。`-c` と併用すれば単一設定、単独または `--all` 併用で全設定を対象にできます。`--dead` は `-p` とは併用できません。
+
 YAML の `commands.down` に `mdc proc kill` と記述すると、runner が自動的に `-c <設定名>` を付与して実行します。
 
 ```bash
 mdc proc kill -c myproject    # 指定した設定の全プロセスを終了
 mdc proc kill -p 12345        # 指定した PID のプロセスを終了
 mdc proc kill --all           # 全設定の管理対象プロセスを終了
+mdc proc kill --dead          # 全設定の Dead エントリを掃除
+mdc proc kill --dead -c myproject  # 指定した設定の Dead エントリを掃除
 ```
 
 | オプション | 説明 |
@@ -360,6 +364,7 @@ mdc proc kill --all           # 全設定の管理対象プロセスを終了
 | `-c`, `--config` | 全プロセスを終了する設定名 |
 | `-p`, `--pid` | 終了するプロセスの PID |
 | `--all` | 全設定の管理対象プロセスを一括終了 |
+| `--dead` | 動作していない追跡エントリのみを掃除（稼働中プロセスは kill しない。`-c` と併用可） |
 
 ### `mdc --version`
 
