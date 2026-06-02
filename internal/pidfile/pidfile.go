@@ -309,6 +309,88 @@ func RemoveEntry(configName, projectName string, pid int) error {
 	return Save(configName, projectName, filtered)
 }
 
+// RemoveDead removes tracked entries whose process is no longer running
+// from the given config. Running processes are preserved and never signaled.
+// Projects that become empty have their PID file deleted, and an empty config
+// directory is removed afterward. The log file for each removed entry is also
+// deleted. If the config does not exist, it returns (0, nil). The total number
+// of removed entries is returned.
+func RemoveDead(configName string) (removed int, err error) {
+	projects, err := LoadAll(configName)
+	if err != nil {
+		return 0, err
+	}
+	if len(projects) == 0 {
+		return 0, nil
+	}
+
+	for projectName, entries := range projects {
+		alive := make([]Entry, 0, len(entries))
+		var deadPIDs []int
+		for _, e := range entries {
+			if IsRunning(e.PID) {
+				alive = append(alive, e)
+			} else {
+				deadPIDs = append(deadPIDs, e.PID)
+			}
+		}
+
+		if len(deadPIDs) == 0 {
+			continue
+		}
+
+		removed += len(deadPIDs)
+
+		// Remove captured logs for the dead processes.
+		for _, pid := range deadPIDs {
+			if logPath, lerr := ProcLogFilePath(configName, projectName, pid); lerr == nil {
+				_ = os.Remove(logPath)
+			}
+		}
+
+		if len(alive) == 0 {
+			path, perr := filePath(configName, projectName)
+			if perr != nil {
+				return removed, perr
+			}
+			if rerr := os.Remove(path); rerr != nil && !os.IsNotExist(rerr) {
+				return removed, rerr
+			}
+		} else {
+			if serr := Save(configName, projectName, alive); serr != nil {
+				return removed, serr
+			}
+		}
+	}
+
+	if cerr := removeEmptyConfigDir(configName); cerr != nil {
+		return removed, cerr
+	}
+	return removed, nil
+}
+
+// RemoveDeadAllConfigs removes dead tracked entries across all configs.
+// It returns the total number of removed entries. Failures across configs
+// are aggregated into a single error, mirroring KillAllConfigsWithCallback.
+func RemoveDeadAllConfigs() (removed int, err error) {
+	allConfigs, err := LoadAllConfigs()
+	if err != nil {
+		return 0, err
+	}
+	var failures []string
+	for configName := range allConfigs {
+		n, rerr := RemoveDead(configName)
+		removed += n
+		if rerr != nil {
+			failures = append(failures, fmt.Sprintf("%s: %v", configName, rerr))
+		}
+	}
+	if len(failures) > 0 {
+		return removed, fmt.Errorf("failed to clean up some configs:\n  %s", strings.Join(failures, "\n  "))
+	}
+	return removed, nil
+}
+
 func removeEmptyConfigDir(configName string) error {
 	dir, err := Dir(configName)
 	if err != nil {

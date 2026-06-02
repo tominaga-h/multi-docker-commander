@@ -186,6 +186,40 @@ projects:
 	}
 }
 
+func TestRemoveDeadKeepsRunning(t *testing.T) {
+	pidDir := t.TempDir()
+	oldBaseDir := pidfile.BaseDir
+	pidfile.BaseDir = pidDir
+	defer func() { pidfile.BaseDir = oldBaseDir }()
+
+	// One running (current process) and one dead (huge fake PID) entry.
+	if err := pidfile.Append("rd", "svc", pidfile.Entry{PID: os.Getpid(), Command: "alive"}); err != nil {
+		t.Fatalf("Append() error: %v", err)
+	}
+	if err := pidfile.Append("rd", "svc", pidfile.Entry{PID: 999999999, Command: "dead"}); err != nil {
+		t.Fatalf("Append() error: %v", err)
+	}
+
+	removed, err := pidfile.RemoveDead("rd")
+	if err != nil {
+		t.Fatalf("RemoveDead() error: %v", err)
+	}
+	if removed != 1 {
+		t.Fatalf("removed = %d, want 1", removed)
+	}
+
+	entries, err := pidfile.Load("rd", "svc")
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 entry remaining, got %d", len(entries))
+	}
+	if entries[0].PID != os.Getpid() {
+		t.Errorf("remaining PID = %d, want %d (running process kept)", entries[0].PID, os.Getpid())
+	}
+}
+
 func TestInvalidConfigPath(t *testing.T) {
 	configDir := t.TempDir()
 

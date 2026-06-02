@@ -64,3 +64,19 @@ Unit tests live next to the code in `internal/*/`. Integration tests live in `te
 - Go 1.25+. Cobra for CLI, `gopkg.in/yaml.v3` for YAML.
 - Branching: `develop` is the working branch, `main` is release.
 - **コミットメッセージは日本語で書くこと**。タイトル・本文ともに日本語が原則。型プレフィックス（`fix:` / `feat:` / `ci:` 等）は付けても付けなくてもよい（既存の履歴と揃える）。
+
+<!-- dev-cycle:toolchain start -->
+
+## dev-cycle ツールチェーン定義（自動生成）
+
+このセクションは `/task-dev-cycle` スキルにより自動管理されている。手動編集は可能だが、フォーマット（マーカーとキー名）は変更しないこと。再検出させたい場合はブロックごと削除する。
+
+- `<TEST_CMD>`: `make test-all`
+- `<BUILD_CMD>`: `make build`
+- `<LINT_CMD>`: `make lint`
+- `<CHECK_CMD>`: `make check`
+- `<VERSION_FILE>`: `Git タグ管理（make build-v が git describe で注入。ソース内バージョン定数なし）`
+- `<VERSION_BUMP_POLICY>`: `SemVer 2.0.0（新機能→MINOR / バグ修正→PATCH / 破壊的変更→MAJOR）。タグは main へのリリース時に付与し、develop では作成しない`
+- `<SEMVER_ENABLED>`: `true`
+- 検出日: `2026-06-02`
+<!-- dev-cycle:toolchain end -->

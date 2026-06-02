@@ -226,6 +226,149 @@ func TestKillAllConfigs(t *testing.T) {
 	}
 }
 
+func TestRemoveDead(t *testing.T) {
+	cleanup := withTempBaseDir(t)
+	defer cleanup()
+
+	// Mix of a dead (huge PID) and a running (current process) entry.
+	if err := Save("cfg", "proj", []Entry{
+		{PID: 999999999, Command: "dead"},
+		{PID: os.Getpid(), Command: "alive"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	removed, err := RemoveDead("cfg")
+	if err != nil {
+		t.Fatalf("RemoveDead() error: %v", err)
+	}
+	if removed != 1 {
+		t.Errorf("removed = %d, want 1", removed)
+	}
+
+	loaded, err := Load("cfg", "proj")
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if len(loaded) != 1 {
+		t.Fatalf("len(loaded) = %d, want 1 (alive entry retained)", len(loaded))
+	}
+	if loaded[0].PID != os.Getpid() {
+		t.Errorf("retained PID = %d, want %d (running)", loaded[0].PID, os.Getpid())
+	}
+}
+
+func TestRemoveDeadAllRemoved(t *testing.T) {
+	cleanup := withTempBaseDir(t)
+	defer cleanup()
+
+	if err := Save("cfg", "proj", []Entry{{PID: 999999999, Command: "dead"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	removed, err := RemoveDead("cfg")
+	if err != nil {
+		t.Fatalf("RemoveDead() error: %v", err)
+	}
+	if removed != 1 {
+		t.Errorf("removed = %d, want 1", removed)
+	}
+
+	// The project file should be gone, and the empty config dir removed.
+	if _, err := Load("cfg", "proj"); !os.IsNotExist(err) {
+		t.Errorf("project file should be removed, err = %v", err)
+	}
+	dir, err := Dir("cfg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		t.Errorf("empty config dir should be removed, err = %v", err)
+	}
+}
+
+func TestRemoveDeadNoConfig(t *testing.T) {
+	cleanup := withTempBaseDir(t)
+	defer cleanup()
+
+	removed, err := RemoveDead("nonexistent")
+	if err != nil {
+		t.Fatalf("RemoveDead() error: %v", err)
+	}
+	if removed != 0 {
+		t.Errorf("removed = %d, want 0 for nonexistent config", removed)
+	}
+}
+
+func TestRemoveDeadAllConfigs(t *testing.T) {
+	cleanup := withTempBaseDir(t)
+	defer cleanup()
+
+	if err := Save("cfg1", "proj", []Entry{
+		{PID: 999999991, Command: "dead1"},
+		{PID: os.Getpid(), Command: "alive1"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := Save("cfg2", "proj", []Entry{{PID: 999999992, Command: "dead2"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	removed, err := RemoveDeadAllConfigs()
+	if err != nil {
+		t.Fatalf("RemoveDeadAllConfigs() error: %v", err)
+	}
+	if removed != 2 {
+		t.Errorf("removed = %d, want 2", removed)
+	}
+
+	// cfg1 keeps its running entry.
+	loaded, err := Load("cfg1", "proj")
+	if err != nil {
+		t.Fatalf("Load(cfg1) error: %v", err)
+	}
+	if len(loaded) != 1 || loaded[0].PID != os.Getpid() {
+		t.Errorf("cfg1 entries = %+v, want single running entry", loaded)
+	}
+
+	// cfg2 is fully cleaned up.
+	dir2, err := Dir("cfg2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(dir2); !os.IsNotExist(err) {
+		t.Errorf("cfg2 dir should be removed, err = %v", err)
+	}
+}
+
+func TestRemoveDeadCleansUpLogs(t *testing.T) {
+	cleanup := withTempBaseDir(t)
+	defer cleanup()
+
+	if err := Save("cfg", "proj", []Entry{{PID: 999999999, Command: "dead"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	logPath, err := ProcLogFilePath("cfg", "proj", 999999999)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(logPath), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(logPath, []byte("log"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := RemoveDead("cfg"); err != nil {
+		t.Fatalf("RemoveDead() error: %v", err)
+	}
+
+	if _, err := os.Stat(logPath); !os.IsNotExist(err) {
+		t.Errorf("dead process log should be removed, err = %v", err)
+	}
+}
+
 func TestKillAllNonexistentConfig(t *testing.T) {
 	cleanup := withTempBaseDir(t)
 	defer cleanup()

@@ -18,15 +18,26 @@ var downCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		configName := args[0]
-		loadAndRun(configName, "down", downDryRun)
+		runErr := loadAndRun(configName, "down", downDryRun)
 
 		if downDryRun {
+			if runErr != nil {
+				fmt.Fprintln(os.Stderr, runErr)
+				os.Exit(1)
+			}
 			printDryRunStopEntries(configName)
 			return
 		}
 
+		// Always clean up tracked background processes, even if the down
+		// commands themselves failed, so PID entries don't leak (#177).
 		if err := pidfile.KillAllWithCallback(configName, logger.Stop); err != nil {
 			fmt.Fprintf(os.Stderr, "⚠️  Warning: failed to clean up background processes: %v\n", err)
+		}
+
+		if runErr != nil {
+			fmt.Fprintln(os.Stderr, runErr)
+			os.Exit(1)
 		}
 	},
 }
