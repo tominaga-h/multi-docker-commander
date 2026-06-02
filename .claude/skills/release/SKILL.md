@@ -68,7 +68,9 @@ description: mdc プロジェクトのリリース作業を実行するスキル
    - `git checkout develop`（作業ブランチに戻る）
    - `git push origin develop`
 4. **CI（Release ワークフロー）の完了待機**
-   - `gh run watch --exit-status $(gh run list --workflow=release.yml --branch=main --limit=1 --json databaseId --jq '.[0].databaseId')`
+   - `release.yml` はタグ push を契機に起動するため、その run の `headBranch` は `main` ではなく**タグ名そのもの**（例: `v2.0.3`）になる。`--branch=main` では引けない点に注意。
+   - `gh run watch --exit-status $(gh run list --workflow=release.yml --branch=<タグ> --limit=1 --json databaseId --jq '.[0].databaseId')`
+   - 念のため、対象 run の `headSha` がリリースタグのコミットと一致することを確認してから watch するとより確実。
    - ワークフローが失敗した場合は中断してユーザーに報告する（リリースノート上書きには進まない）。
 5. **GitHub Release のリリースノートを上書き**
    - CI が `softprops/action-gh-release` で生成した自動リリースノートを、手書きの `docs/release/<タグ>.md` で上書きする。
@@ -97,7 +99,8 @@ git checkout develop
 git push origin develop
 
 # CI（Release ワークフロー）の完了を待機
-gh run watch --exit-status $(gh run list --workflow=release.yml --branch=main --limit=1 --json databaseId --jq '.[0].databaseId')
+# 注意: タグ push の run は headBranch がタグ名になるため --branch=main では引けない。--branch=<タグ> を使う。
+gh run watch --exit-status $(gh run list --workflow=release.yml --branch=<タグ> --limit=1 --json databaseId --jq '.[0].databaseId')
 
 # 自動生成されたリリースノートを手書きノートで上書き
 gh release edit <タグ> --notes-file docs/release/<タグ>.md
