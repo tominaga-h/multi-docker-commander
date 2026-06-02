@@ -1,7 +1,7 @@
 # multi-docker-commander (mdc)
 
 [![build](https://img.shields.io/github/actions/workflow/status/tominaga-h/multi-docker-commander/ci.yml?branch=develop)](https://github.com/tominaga-h/multi-docker-commander/actions/workflows/ci.yml)
-[![version](https://img.shields.io/badge/version-2.0.2-blue)](https://github.com/tominaga-h/multi-docker-commander/releases/tag/v2.0.2)
+[![version](https://img.shields.io/badge/version-2.0.3-blue)](https://github.com/tominaga-h/multi-docker-commander/releases/tag/v2.0.3)
 
 **複数リポジトリにまたがる** Docker 環境の起動・停止を、**1つのコマンドで一括管理・実行** するための CLI ツール。
 
@@ -45,18 +45,18 @@ brew install tominaga-h/tap/mdc
 
 #### インストール (macOS / Linux)
 
-1. リリースページから OS / アーキテクチャに合うバイナリ（例: `mdc-v2.0.2-darwin-arm64`）と対応する `.sha256` ファイルをダウンロードします。
+1. リリースページから OS / アーキテクチャに合うバイナリ（例: `mdc-v2.0.3-darwin-arm64`）と対応する `.sha256` ファイルをダウンロードします。
 2. チェックサムを検証します:
 
    ```bash
-   shasum -a 256 -c mdc-v2.0.2-darwin-arm64.sha256
+   shasum -a 256 -c mdc-v2.0.3-darwin-arm64.sha256
    ```
 
 3. 実行権限を付与して `PATH` の通ったディレクトリへ移動します:
 
    ```bash
-   chmod +x mdc-v2.0.2-darwin-arm64
-   sudo mv mdc-v2.0.2-darwin-arm64 /usr/local/bin/mdc
+   chmod +x mdc-v2.0.3-darwin-arm64
+   sudo mv mdc-v2.0.3-darwin-arm64 /usr/local/bin/mdc
    ```
 
 **※ WSL(ubuntu)で使う場合も、Linuxバイナリをダウンロードしてください。**
@@ -67,7 +67,7 @@ brew install tominaga-h/tap/mdc
 2. チェックサムを検証します:
 
    ```powershell
-   Get-FileHash mdc-v2.0.2-windows-amd64.exe -Algorithm SHA256
+   Get-FileHash mdc-v2.0.3-windows-amd64.exe -Algorithm SHA256
    ```
 
 3. ファイルを `mdc.exe` にリネームし、`PATH` の通ったディレクトリに配置します。
