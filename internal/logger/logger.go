@@ -118,6 +118,13 @@ func Error(projectName, cmd string, err error) {
 	writef("❌ [%s] Failed: %s — %s\n", prefix(projectName), colorCmd(cmd), err)
 }
 
+// Info prints a plain status line under a project prefix. Unlike Success it
+// does not apply command styling, so it suits human-readable messages
+// (e.g. "already up to date") rather than shell commands.
+func Info(projectName, msg string) {
+	writef("✅ [%s] %s\n", prefix(projectName), msg)
+}
+
 func Background(projectName, cmd string, pid int) {
 	writef("🔄 [%s] Background: %s (PID: %s)\n", prefix(projectName), colorCmd(cmd), colorPID(pid))
 }

@@ -97,6 +97,28 @@ func TestError(t *testing.T) {
 	}
 }
 
+func TestInfo(t *testing.T) {
+	msg := "already up to date (v2.0.3)"
+	out := captureOutput(t, func() {
+		Info("update", msg)
+	})
+	plain := stripANSI(out)
+	if !strings.Contains(plain, "[update]") {
+		t.Errorf("output missing project prefix: %q", plain)
+	}
+	if !strings.Contains(plain, msg) {
+		t.Errorf("output missing message: %q", plain)
+	}
+	if !strings.Contains(out, "✅") {
+		t.Errorf("output missing emoji: %q", out)
+	}
+	// Info must NOT style the message as a shell command (unlike Success):
+	// the cyan colorCmd wrapping must be absent.
+	if strings.Contains(out, text.Colors{text.FgCyan}.Sprint(msg)) {
+		t.Errorf("Info should not color the message as a command: %q", out)
+	}
+}
+
 func TestBackground(t *testing.T) {
 	out := captureOutput(t, func() {
 		Background("api", "make run", 12345)
